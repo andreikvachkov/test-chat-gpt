@@ -6,11 +6,17 @@ project_root="$(pwd)"
 compose_args=(--env-file .env.docker -f compose.yaml)
 if [ -n "${KAMALI_COMPOSE_EXTRA:-}" ]; then compose_args+=(-f "$KAMALI_COMPOSE_EXTRA"); fi
 compose() { docker compose "${compose_args[@]}" "$@"; }
+start_web() {
+  # Extracting a ZIP can replace mounted files on WSL; recreate web to load the current config.
+  compose up -d --no-deps --force-recreate --wait web
+}
 initialize() {
   if [ "$(id -u)" -eq 0 ]; then
     echo 'Run this command as your regular WSL Linux user, not root.' >&2
     exit 1
   fi
+  # PostgreSQL initializes a new volume as its own user, which must read this mounted directory.
+  chmod a+rx docker/postgres
   docker run --rm --user "$(id -u):$(id -g)" \
     --mount "type=bind,source=$project_root,target=/var/www/html" --workdir /var/www/html \
     -e KAMALI_LOCAL_UID="$(id -u)" -e KAMALI_LOCAL_GID="$(id -g)" \
@@ -32,16 +38,21 @@ case "$command" in
     compose run --rm --no-deps node npm ci
     compose run --rm --no-deps app php docker/prepare.php
     compose run --rm --no-deps node npm run build
-    compose up -d --wait app web scheduler
+    compose up -d --wait app scheduler
+    start_web
     compose exec -T app php docker/check-ready.php
     ;;
   up)
     compose stop vite
     compose run --rm --no-deps app php -r 'if (is_file("public/hot")) unlink("public/hot");'
-    compose up -d --wait db app web scheduler
+    compose up -d --wait db app scheduler
+    start_web
     compose exec -T app php docker/check-ready.php
     ;;
-  dev) compose --profile dev up -d --wait db app web scheduler vite ;;
+  dev)
+    compose --profile dev up -d --wait db app scheduler vite
+    start_web
+    ;;
   down) compose --profile dev down ;;
   status) compose --profile dev ps ;;
   logs) compose logs --tail=100 "$@" ;;
