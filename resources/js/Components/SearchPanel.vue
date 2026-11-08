@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "./UiIcon.vue";
 import { useContent } from "../composables/content";
 const { text } = useContent();
 import { ref } from "vue";
@@ -27,7 +28,7 @@ function search() {
             aria-label="Закрыть поиск"
             @click="searchOpen = false"
         >
-            {{ text("shared.bb5edfa2c779") }}
+            <UiIcon name="close" />
         </button>
         <div class="search-popup__wrap">
             <h2 class="search-popup__title">

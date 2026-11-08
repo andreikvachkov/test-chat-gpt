@@ -5,7 +5,8 @@
     "dev": "vite",
     "build": "vite build",
     "test:browser": "node tests/browser/smoke.mjs",
-    "test:visual": "node tests/browser/visual.mjs"
+    "test:visual": "node tests/browser/visual.mjs",
+    "test:catalog-cart": "node tests/browser/catalog-cart.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

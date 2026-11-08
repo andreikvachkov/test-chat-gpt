@@ -32,7 +32,7 @@ class Cart
     {
         $quantities = $this->quantities();
         $items = ProductVariant::with('product')->whereIn('id', array_keys($quantities))->get()->map(fn ($v) => [
-            'id' => $v->id, 'product_slug' => $v->product->slug, 'name' => $v->product->name, 'variant' => $v->name, 'image' => $v->product->image,
+            'id' => $v->id, 'product_id' => $v->product_id, 'product_slug' => $v->product->slug, 'name' => $v->product->name, 'variant' => $v->name, 'image' => $v->product->image,
             'quantity' => $quantities[$v->id], 'price_minor' => $v->price_minor, 'available' => $v->active && $v->product->published && $v->stock >= $quantities[$v->id],
         ])->values();
 

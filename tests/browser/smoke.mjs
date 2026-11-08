@@ -14,6 +14,7 @@ try{
  await page.getByRole('textbox',{name:'Пароль',exact:true}).fill('BrowserPassword123');await page.getByRole('textbox',{name:'Повторите пароль',exact:true}).fill('BrowserPassword123');await page.getByRole('checkbox').check();
  await page.getByRole('button',{name:'Зарегистрироваться',exact:true}).click();await page.waitForURL('**/account');
  await page.goto(base+'/products/sultan');await page.locator('.product-hero__add-basket').click();await expect(page.locator('.popup-cart.active')).toBeVisible();await expect(page.locator('.popup-cart__product')).toHaveCount(1);
+ await page.locator('.popup-cart__product__add-wishlist').click();await expect(page.locator('.popup-cart__product__add-wishlist')).toHaveAttribute('aria-pressed','true');
  await page.getByRole('link',{name:'Оформить заказ',exact:true}).click();await page.waitForURL('**/checkout');
  await page.getByLabel('Телефон',{exact:true}).fill('+79991234567');await page.getByLabel('Город, адрес или желаемый пункт СДЭК').fill('Казань, пункт СДЭК');await page.getByRole('checkbox').check();
  await page.getByRole('button',{name:'Создать заказ',exact:true}).click();await page.waitForURL('**/account/orders/*');await expect(page.getByText('Оплата не начата',{exact:false})).toBeVisible();

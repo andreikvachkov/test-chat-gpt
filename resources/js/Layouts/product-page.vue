@@ -3,6 +3,7 @@ import { computed, ref } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import { useContent } from "../composables/content";
 import { favourite } from "../composables/shop";
+import UiIcon from "../Components/UiIcon.vue";
 import ProductPurchase from "../Components/ProductPurchase.vue";
 const { text } = useContent();
 const page = usePage();
@@ -51,7 +52,12 @@ const gallery = computed(() =>
                         {{ text("product-page.4687617547b3") }}
                     </span>
                 </div>
-                <button class="product-hero__add-wishlist_mobile">
+                <button
+                    class="product-hero__add-wishlist_mobile"
+                    aria-label="В избранное"
+                    :aria-pressed="page.props.favourites.includes(product.id)"
+                    @click="favourite(product)"
+                >
                     <svg
                         fill="none"
                         height="30"
@@ -122,6 +128,16 @@ const gallery = computed(() =>
                                 :product="product"
                                 v-model="variantId"
                             ></ProductPurchase>
+                            <button
+                                class="product-hero__add-wishlist"
+                                aria-label="В избранное"
+                                :aria-pressed="
+                                    page.props.favourites.includes(product.id)
+                                "
+                                @click="favourite(product)"
+                            >
+                                <UiIcon name="heart" />
+                            </button>
                         </div>
                         <div class="product-hero__accordion accordion">
                             <div class="accordion__item">

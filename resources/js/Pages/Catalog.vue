@@ -112,7 +112,11 @@ function apply() {
                 <p v-if="!page.props.products.data.length" class="store-empty">
                     {{ text("shared.7225525c8847") }}
                 </p>
-                <nav class="store-pagination" aria-label="Страницы каталога">
+                <nav
+                    v-if="page.props.products.last_page > 1"
+                    class="store-pagination"
+                    aria-label="Страницы каталога"
+                >
                     <template
                         v-for="(link, index) in page.props.products.links"
                         :key="index"

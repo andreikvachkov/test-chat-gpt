@@ -1,4 +1,5 @@
 <script setup>
+import UiIcon from "./UiIcon.vue";
 import { useContent } from "../composables/content";
 const { text } = useContent();
 import { computed } from "vue";
@@ -8,6 +9,7 @@ import {
     setQuantity,
     money,
     interactionError,
+    favourite,
 } from "../composables/shop";
 const page = usePage();
 const cart = computed(() => page.props.cart);
@@ -33,7 +35,7 @@ const cart = computed(() => page.props.cart);
             aria-label="Закрыть корзину"
             @click="cartOpen = false"
         >
-            {{ text("shared.bb5edfa2c779") }}
+            <UiIcon name="close" />
         </button>
         <div v-if="!cart.items.length" class="popup-cart__empty">
             <p class="popup-cart__empty__title">
@@ -65,11 +67,23 @@ const cart = computed(() => page.props.cart);
                     <div class="popup-cart__product__right">
                         <div class="popup-cart__product__buttons">
                             <button
+                                class="popup-cart__product__add-wishlist"
+                                :aria-pressed="
+                                    page.props.favourites.includes(
+                                        item.product_id,
+                                    )
+                                "
+                                aria-label="В избранное"
+                                @click="favourite({ id: item.product_id })"
+                            >
+                                <UiIcon name="heart" />
+                            </button>
+                            <button
                                 class="popup-cart__product__delete"
                                 @click="setQuantity(item.id, 0)"
                                 aria-label="Удалить товар"
                             >
-                                {{ text("shared.bb5edfa2c779") }}
+                                <UiIcon name="close" />
                             </button>
                         </div>
                         <Link
@@ -93,8 +107,8 @@ const cart = computed(() => page.props.cart);
                                         setQuantity(item.id, item.quantity - 1)
                                     "
                                 >
-                                    {{ text("shared.e57356b0ea06") }}</button
-                                ><span>{{ item.quantity }}</span
+                                    <UiIcon name="minus" /></button
+                                ><span class="value">{{ item.quantity }}</span
                                 ><button
                                     class="popup-cart__product__plus"
                                     aria-label="Увеличить количество"
@@ -102,7 +116,7 @@ const cart = computed(() => page.props.cart);
                                         setQuantity(item.id, item.quantity + 1)
                                     "
                                 >
-                                    {{ text("shared.b31e4299dbea") }}
+                                    <UiIcon name="plus" />
                                 </button>
                             </div>
                             <div class="popup-cart__product__price">
@@ -112,14 +126,18 @@ const cart = computed(() => page.props.cart);
                     </div>
                 </div>
             </div>
-            <p class="store-errors" role="alert">{{ interactionError }}</p>
-            <div class="popup-cart__bottom">
-                <p>
-                    {{ text("shared.85240aac7a0b") }}
-                    {{ money(cart.subtotal_minor) }}
-                </p>
+            <p v-if="interactionError" class="store-errors" role="alert">
+                {{ interactionError }}
+            </p>
+            <div class="popup-cart__product__result">
+                <div class="row">
+                    <p>
+                        {{ text("shared.85240aac7a0b") }}
+                    </p>
+                    <p>{{ money(cart.subtotal_minor) }}</p>
+                </div>
                 <Link
-                    class="popup-cart__submit-btn store-primary"
+                    class="popup-cart__product__submit-btn"
                     :href="text('shared.6de2be47f6e2')"
                     @click="cartOpen = false"
                     >{{ text("shared.659fb3e60c32") }}</Link

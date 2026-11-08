@@ -132,3 +132,50 @@ button:disabled {
 .store-status {
     white-space: pre-line;
 }
+/* Match the original cart controls: SVG icons and the quantity's .value colour. */
+.popup-cart,
+.search-popup__close {
+    color: #4a4a4a;
+}
+.popup-cart__product__add-wishlist,
+.catalog-page__item__add-wishlist,
+.product-hero__add-wishlist {
+    color: #621617;
+}
+.popup-cart__product-list {
+    min-height: 0;
+}
+.popup-cart__product__left {
+    flex-shrink: 0;
+}
+.popup-cart__product__right {
+    min-width: 0;
+}
+.popup-cart__product__name {
+    display: block;
+    overflow-wrap: anywhere;
+}
+.popup-cart {
+    height: 100dvh;
+}
+/* One real link owns the hover image, picture and title; purchase stays a separate action. */
+.catalog-page__item__link {
+    display: contents;
+}
+.catalog-page__item__link:focus-visible .catalog-page__item__img {
+    outline: 2px solid #621617;
+    outline-offset: 4px;
+}
+.catalog-page__item > .catalog-page__item__btn {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.catalog-page__item:hover > .catalog-page__item__btn,
+.catalog-page__item:focus-within > .catalog-page__item__btn {
+    opacity: 1;
+    pointer-events: auto;
+}
+.catalog-page__item:focus-within .catalog-page__item__hover {
+    opacity: 1;
+}
