@@ -1,0 +1,71 @@
+name: Store checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: kamali
+          POSTGRES_USER: kamali
+          # Ephemeral CI database only; no production credentials.
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kamali -d kamali"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_USERNAME: kamali
+      DB_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: curl, dom, fileinfo, intl, mbstring, pdo_pgsql, xml, xmlreader, xmlwriter, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: composer install --prefer-dist --no-interaction --no-progress
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: php artisan key:generate
+      - name: Create isolated test database
+        env:
+          PGPASSWORD: postgres
+        run: psql -h 127.0.0.1 -U kamali -d postgres -v ON_ERROR_STOP=1 -c 'CREATE DATABASE kamali_test OWNER kamali'
+      - run: npm run build
+      - run: php artisan test
+        env:
+          DB_DATABASE: kamali_test
+      - run: php artisan migrate --seed --force
+        env:
+          DB_DATABASE: kamali
+      - run: php artisan db:seed --class=DemoCatalogSeeder --force
+        env:
+          DB_DATABASE: kamali
+      - run: npx playwright install --with-deps chromium
+      - name: Browser workflow
+        env:
+          DB_DATABASE: kamali
+        run: |
+          php artisan serve --no-reload --host=127.0.0.1 --port=8000 > /tmp/kamali-server.log 2>&1 &
+          for attempt in {1..20}; do
+            if curl --fail --silent http://127.0.0.1:8000/up >/dev/null; then break; fi
+            sleep 1
+          done
+          npm run test:browser

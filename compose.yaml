@@ -1,0 +1,106 @@
+name: ${COMPOSE_PROJECT_NAME:-kamali}
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /var/www/html
+    env_file: .env.docker
+    environment:
+      DB_URL: ""
+      DB_HOST: db
+      DB_PORT: "5432"
+      COMPOSER_HOME: /tmp/composer
+      COMPOSER_CACHE_DIR: /tmp/composer-cache
+    volumes:
+      - .:/var/www/html
+      - vendor:/var/www/html/vendor
+      - node_modules:/var/www/html/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@fsockopen('127.0.0.1', 9000) ? 0 : 1);"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+    init: true
+
+  web:
+    image: nginx:stable-alpine
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    entrypoint: ["nginx", "-g", "daemon off;"]
+    ports:
+      - "127.0.0.1:${APP_PORT:-8080}:8080"
+    volumes:
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./public:/var/www/html/public:ro
+      - ./storage/app/public:/var/www/html/storage/app/public:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "-Y", "off", "http://127.0.0.1:8080/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    init: true
+
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-kamali}
+      POSTGRES_USER: ${DB_USERNAME:-kamali}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Run bash scripts/docker.sh init first}
+      POSTGRES_INITDB_ARGS: --encoding=UTF8 --locale=C.UTF-8
+    ports:
+      - "127.0.0.1:${DB_FORWARD_PORT:-5433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/10-test-database.sh:/docker-entrypoint-initdb.d/10-test-database.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 10s
+
+  node: &node
+    image: node:22-bookworm-slim
+    profiles: [tools]
+    user: "${LOCAL_UID:-1000}:${LOCAL_GID:-1000}"
+    working_dir: /var/www/html
+    environment:
+      NPM_CONFIG_CACHE: /tmp/npm-cache
+      APP_URL: ${APP_URL:-http://localhost:8080}
+    volumes:
+      - .:/var/www/html
+      - node_modules:/var/www/html/node_modules
+    command: ["npm", "run", "build"]
+    init: true
+
+  vite:
+    <<: *node
+    profiles: [dev]
+    environment:
+      NPM_CONFIG_CACHE: /tmp/npm-cache
+      APP_URL: ${APP_URL:-http://localhost:8080}
+      VITE_HMR_HOST: ${VITE_HMR_HOST:-localhost}
+      VITE_HMR_PORT: ${VITE_PORT:-5173}
+      VITE_USE_POLLING: ${VITE_USE_POLLING:-false}
+    ports:
+      - "127.0.0.1:${VITE_PORT:-5173}:5173"
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173", "--strictPort"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5173/@vite/client').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+
+volumes:
+  postgres_data:
+  vendor:
+  node_modules:

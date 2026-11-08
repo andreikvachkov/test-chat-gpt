@@ -1,0 +1,134 @@
+/* Keep the layout typography and geometry; additions cover previously absent states. */
+.store-errors {
+    color: #a01425;
+    white-space: pre-line;
+    margin: 1rem 0;
+    font-size: 1rem;
+}
+.store-status {
+    color: #621617;
+    margin: 1rem 0;
+}
+.store-empty {
+    color: #621617;
+    padding: 3rem 0;
+}
+.store-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+    color: #621617;
+}
+.store-actions a,
+.store-actions button {
+    text-decoration: underline;
+}
+.store-form {
+    color: #621617;
+    max-width: 50rem;
+    margin: 2rem auto;
+}
+.store-form label {
+    display: block;
+    margin: 1rem 0;
+}
+.store-form input:not([type="checkbox"]),
+.store-form textarea,
+.store-form select {
+    display: block;
+    width: 100%;
+    padding: 1rem;
+    border: 1px solid #621617;
+    background: white;
+    color: #4a4a4a;
+    font: inherit;
+}
+.store-form button[type="submit"],
+.store-primary {
+    display: inline-block;
+    padding: 1rem 2rem;
+    background: #621617;
+    color: white;
+    border-radius: 2rem;
+}
+button:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+.store-order {
+    color: #621617;
+    padding: 1.5rem 0;
+    border-bottom: 1px solid #ddd;
+}
+.store-cart-image {
+    width: 6rem;
+    height: 6rem;
+    object-fit: contain;
+}
+.store-cart-item {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem 0;
+    color: #621617;
+}
+.store-cart-item input {
+    width: 4rem;
+    border: 1px solid #aaa;
+    color: #621617;
+    padding: 0.5rem;
+}
+.store-pagination {
+    display: flex;
+    gap: 1rem;
+    padding: 2rem 0;
+    color: #621617;
+}
+.store-pagination .active {
+    font-weight: bold;
+}
+/* Mobile navigation has no separate supplied mockup; reuse the existing menu links. */
+@media (max-width: 768px) {
+    header .col-nav nav.store-mobile-nav-open {
+        display: block;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        padding: 1.5rem;
+        background: #621617;
+        z-index: 50;
+    }
+    header .col-nav nav.store-mobile-nav-open ul {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+    .order-registration__delivery__courier textarea {
+        max-width: 100%;
+    }
+}
+.order-registration__delivery__courierMessage textarea {
+    width: 100%;
+    min-height: 6rem;
+    padding: 1rem;
+    border: 1px solid #e8e8e8;
+    border-radius: 0.5rem;
+    color: #4a4a4a;
+    font: inherit;
+}
+.account__nav button {
+    color: #4a4a4a;
+    font: inherit;
+    text-align: left;
+}
+.account__nav button.active {
+    color: #621617;
+}
+.catalog-page__item__name {
+    display: block;
+}
+.store-status {
+    white-space: pre-line;
+}
