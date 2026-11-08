@@ -158,23 +158,16 @@ button:disabled {
 .popup-cart {
     height: 100dvh;
 }
-/* One real link owns the hover image, picture and title; purchase stays a separate action. */
-.catalog-page__item__link {
-    display: contents;
+/* Preserve the supplied link typography when a purchase action uses a button. */
+button.catalog-page__item__btn,
+button.catalog-page__item__btn_mobile,
+button.product-hero__add-basket {
+    font-size: inherit;
 }
-.catalog-page__item__link:focus-visible .catalog-page__item__img {
-    outline: 2px solid #621617;
-    outline-offset: 4px;
-}
-.catalog-page__item > .catalog-page__item__btn {
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-}
-.catalog-page__item:hover > .catalog-page__item__btn,
-.catalog-page__item:focus-within > .catalog-page__item__btn {
-    opacity: 1;
-    pointer-events: auto;
+/* Keep the original hover container and its button background while allowing photo navigation. */
+.catalog-page__item__hover-link {
+    display: block;
+    height: 100%;
 }
 .catalog-page__item:focus-within .catalog-page__item__hover {
     opacity: 1;

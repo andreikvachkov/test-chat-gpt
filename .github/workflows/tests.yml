@@ -70,3 +70,4 @@ jobs:
           done
           npm run test:browser
           npm run test:catalog-cart
+          npm run test:purchase-appearance
