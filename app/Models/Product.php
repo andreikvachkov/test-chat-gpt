@@ -64,7 +64,7 @@ class Product extends Model
 
     public function getReviewsEnabledAttribute(): bool
     {
-        return (bool) $this->settings()['reviews_enabled'];
+        return true;
     }
 
     public function variants()
@@ -74,7 +74,7 @@ class Product extends Model
 
     public function settings(): array
     {
-        return array_replace(ProductData::defaults($this->type), $this->details ?? []);
+        return ProductData::settings($this->details, $this->type);
     }
 
     public function category()

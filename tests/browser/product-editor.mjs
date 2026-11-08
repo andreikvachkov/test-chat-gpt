@@ -69,7 +69,6 @@ try {
     await field("simple.price").fill("620.50");
     await page.getByRole("tab", { name: "Запасы", exact: true }).click();
     await field("simple.stock").fill("5");
-    await field("simple.name").fill("250 мл");
     const uploads = page.locator(".fi-fo-file-upload input[type=file]");
     await uploads
         .nth(0)
@@ -194,6 +193,80 @@ try {
             .locator('input[id*=".variants."][id$=".sku"]')
             .evaluateAll((els) => els.map((e) => e.value)),
     ).toEqual(skus);
+    await page
+        .locator('input[id*=".variants."][id$=".price"]')
+        .first()
+        .fill("999");
+    await page.getByRole("tab", { name: "Атрибуты", exact: true }).click();
+    const switches = page.locator(
+        '[id*=".attribute_config."][id$=".for_variations"]',
+    );
+    for (let i = 0; i < fixture.attributes.length; i++)
+        await switches.nth(i).uncheck();
+    await page.getByRole("tab", { name: "Вариации", exact: true }).click();
+    await expect(
+        page.locator('input[id*=".variants."][id$=".price"]'),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole("button", {
+            name: "Сформировать вариации из атрибутов",
+            exact: true,
+        }),
+    ).toBeDisabled();
+    await page.getByRole("tab", { name: "Атрибуты", exact: true }).click();
+    for (let i = 0; i < fixture.attributes.length; i++)
+        await switches.nth(i).check();
+    await page.getByRole("tab", { name: "Вариации", exact: true }).click();
+    await page
+        .getByRole("button", {
+            name: "Сформировать вариации из атрибутов",
+            exact: true,
+        })
+        .click();
+    await expect(
+        page.locator('input[id*=".variants."][id$=".price"]').first(),
+    ).toHaveValue("999");
+    expect(
+        await page
+            .locator('input[id*=".variants."][id$=".sku"]')
+            .evaluateAll((els) => els.map((el) => el.value)),
+    ).toEqual(skus);
+    console.log(
+        "PASS: disabling variation attributes clears incompatible rows and regeneration restores unsaved prices and existing SKUs",
+    );
+
+    await page.getByRole("tab", { name: "Запасы", exact: true }).click();
+    await page
+        .getByRole("switch", {
+            name: "Управлять общим остатком товара?",
+            exact: true,
+        })
+        .check();
+    await field("inventory_stock").fill("37");
+    await page.getByRole("tab", { name: "Вариации", exact: true }).click();
+    await page
+        .getByRole("switch", {
+            name: "Собственный остаток вариации",
+            exact: true,
+        })
+        .first()
+        .uncheck();
+    await expect(
+        page.getByText(/Используется общий остаток родителя: 37 шт/),
+    ).toBeVisible();
+    await page
+        .getByRole("switch", {
+            name: "Собственный остаток вариации",
+            exact: true,
+        })
+        .first()
+        .check();
+    await expect(
+        page.locator('input[id*=".variants."][id$=".stock"]').first(),
+    ).toHaveValue("3");
+    console.log(
+        "PASS: variation form identifies parent stock inheritance and restores its own quantity when enabled",
+    );
     await page.screenshot({
         path: "/tmp/kamali-product-editor/variable.png",
         fullPage: true,

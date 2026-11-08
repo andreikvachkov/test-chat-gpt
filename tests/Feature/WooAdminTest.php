@@ -71,7 +71,7 @@ class WooAdminTest extends TestCase
         Livewire::test(ManageCategory::class)->assertCanSeeTableRecords([$parent, $child, $grandchild, $second], inOrder: true);
     }
 
-    public function test_scheduled_sale_uses_effective_price_and_preserves_regular_price_and_shipping_data(): void
+    public function test_sale_is_immediate_and_preserves_regular_price_and_shipping_data(): void
     {
         $this->travelTo(now()->setDate(2026, 11, 10)->setTime(12, 0));
         $editor = app(ProductEditor::class);
@@ -82,16 +82,18 @@ class WooAdminTest extends TestCase
         $this->assertSame('0.25', $product->details['weight']);
         $order = app(Checkout::class)->place(User::factory()->create(), $this->orderData(80000), [$variant->id => 1]);
         $this->assertSame(80000, $order->items->first()->price_minor);
-        $this->assertSame('Спасибо за покупку', $order->items->first()->purchase_note);
+        $this->assertNull($order->items->first()->purchase_note);
+        $this->assertArrayNotHasKey('gtin', $product->details);
+        $this->assertArrayNotHasKey('purchase_note', $product->details);
         $this->travelTo(now()->addDays(3));
-        $this->assertSame(100000, $variant->fresh()->price_minor);
+        $this->assertSame(80000, $variant->fresh()->price_minor);
         $state = $editor->state($product);
         $state['simple']['sale_price'] = '1001';
         $this->expectException(ValidationException::class);
         $editor->save($product, $state);
     }
 
-    public function test_unmanaged_stock_backorders_and_individual_sales_are_enforced_at_checkout(): void
+    public function test_unmanaged_stock_and_backorders_are_enforced_and_removed_individual_limit_is_ignored(): void
     {
         $editor = app(ProductEditor::class);
         $product = $editor->save(null, $this->data(['simple' => ['price' => '1000', 'stock' => 0], 'details' => ['manage_stock' => false, 'stock_status' => 'instock']]));
@@ -109,8 +111,8 @@ class WooAdminTest extends TestCase
         $state = $editor->state($product);
         $state['details']['sold_individually'] = true;
         $editor->save($product, $state);
-        $this->expectException(ValidationException::class);
         app(Checkout::class)->place(User::factory()->create(), $this->orderData(200000), [$variant->id => 2]);
+        $this->assertSame(-4, $variant->fresh()->stock);
     }
 
     public function test_two_variations_cannot_exceed_shared_parent_stock(): void

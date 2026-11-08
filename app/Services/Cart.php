@@ -23,12 +23,6 @@ class Cart
             if (! $variant || ! $variant->active || $variant->retired_at || ! $variant->product?->isVisible() || ! $variant->canSupply($quantity)) {
                 throw ValidationException::withMessages(['cart' => 'Товар недоступен в указанном количестве.']);
             }
-            if ($variant->product->settings()['sold_individually']) {
-                $otherVariants = ProductVariant::where('product_id', $variant->product_id)->whereKeyNot($id)->pluck('id');
-                if ($quantity + collect($cart)->only($otherVariants->all())->sum() > 1) {
-                    throw ValidationException::withMessages(['cart' => 'Этот товар продаётся только по одной штуке в заказе.']);
-                }
-            }
             $cart[$id] = $quantity;
         }
         Session::put('cart', $cart);

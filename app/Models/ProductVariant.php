@@ -21,12 +21,12 @@ class ProductVariant extends Model
 
     protected function priceMinor(): Attribute
     {
-        return Attribute::get(fn ($value) => $this->sale_price_minor !== null && (! $this->sale_starts_at || $this->sale_starts_at->lte(now())) && (! $this->sale_ends_at || $this->sale_ends_at->gte(now())) ? $this->sale_price_minor : (int) $value);
+        return Attribute::get(fn ($value) => $this->sale_price_minor ?? (int) $value);
     }
 
     public function settings(): array
     {
-        return $this->product?->type === 'simple' ? $this->product->settings() : array_replace(ProductData::defaults('variable', true), $this->details ?? []);
+        return $this->product?->type === 'simple' ? $this->product->settings() : ProductData::settings($this->details, 'variable', true);
     }
 
     public function stockOwner(): Product|self|null
@@ -40,7 +40,7 @@ class ProductVariant extends Model
 
     public function canSupply(int $quantity): bool
     {
-        if ($quantity < 1 || ($this->product?->settings()['sold_individually'] && $quantity > 1)) {
+        if ($quantity < 1) {
             return false;
         }
         $owner = $this->stockOwner();
@@ -71,9 +71,6 @@ class ProductVariant extends Model
     {
         if (! $this->available) {
             return 0;
-        }
-        if ($this->product?->settings()['sold_individually']) {
-            return 1;
         }
         $owner = $this->stockOwner();
         $settings = $owner instanceof Product ? $owner->settings() : $this->settings();

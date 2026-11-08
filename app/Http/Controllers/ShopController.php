@@ -52,7 +52,7 @@ class ShopController extends Controller
         }
         $sort = $d['sort'] ?? 'popular';
         if (in_array($sort, ['price_asc', 'price_desc'])) {
-            $query->orderBy(ProductVariant::selectRaw('MIN(CASE WHEN sale_price_minor IS NOT NULL AND (sale_starts_at IS NULL OR sale_starts_at <= CURRENT_TIMESTAMP) AND (sale_ends_at IS NULL OR sale_ends_at >= CURRENT_TIMESTAMP) THEN sale_price_minor ELSE price_minor END)')->whereColumn('product_id', 'products.id')->whereNull('retired_at')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
+            $query->orderBy(ProductVariant::selectRaw('MIN(COALESCE(sale_price_minor, price_minor))')->whereColumn('product_id', 'products.id')->whereNull('retired_at')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
         } else {
             $query->orderByRaw("COALESCE((details->>'menu_order')::integer, 0)")->orderBy('id');
         }

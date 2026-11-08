@@ -33,17 +33,12 @@ class Checkout
                 throw ValidationException::withMessages(['cart' => 'Состав корзины изменился.']);
             }
             $subtotal = 0;
-            $productQuantities = [];
             $reservations = [];
             foreach ($variants as $v) {
                 $q = $quantities[$v->id];
                 if (! is_int($q) || $q < 1 || $q > 99 || ! $v->active || $v->retired_at || ! $v->product?->isVisible() || ! $v->canSupply($q)) {
                     throw ValidationException::withMessages(['cart' => 'Недостаточно товара: '.$v->product->name]);
                 }$subtotal += $v->price_minor * $q;
-                $productQuantities[$v->product_id] = ($productQuantities[$v->product_id] ?? 0) + $q;
-                if ($v->product->settings()['sold_individually'] && $productQuantities[$v->product_id] > 1) {
-                    throw ValidationException::withMessages(['cart' => 'Этот товар продаётся только по одной штуке в заказе.']);
-                }
                 if ($owner = $v->stockOwner()) {
                     $key = $owner->getTable().':'.$owner->id;
                     $reservations[$key] ??= ['owner' => $owner, 'quantity' => 0, 'settings' => $owner instanceof Product ? $owner->settings() : $v->settings()];
@@ -66,7 +61,7 @@ class Checkout
                 $q = $quantities[$v->id];
                 $owner = $v->stockOwner();
                 $poolQuantity = $owner ? $reservations[$owner->getTable().':'.$owner->id]['quantity'] : $q;
-                $order->items()->create(['product_variant_id' => $v->id, 'name' => $v->product->name.' — '.$v->name, 'sku' => $v->sku, 'price_minor' => $v->price_minor, 'quantity' => $q, 'purchase_note' => $v->product->settings()['purchase_note'], 'backordered' => $v->backorderNotice($poolQuantity)]);
+                $order->items()->create(['product_variant_id' => $v->id, 'name' => $v->product->name.' — '.$v->name, 'sku' => $v->sku, 'price_minor' => $v->price_minor, 'quantity' => $q, 'backordered' => $v->backorderNotice($poolQuantity)]);
             }
             foreach ($reservations as $reservation) {
                 $owner = $reservation['owner'];
