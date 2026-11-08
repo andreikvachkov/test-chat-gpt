@@ -1,9 +1,10 @@
 <?php
 
+use App\Models\AdminRole;
+use App\Models\AdminUser;
 use App\Models\Category;
 use App\Models\ProductAttribute;
 use App\Models\ProductCollection;
-use App\Models\User;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Str;
 
@@ -15,8 +16,8 @@ if (! app()->environment(['local', 'testing'])) {
 }
 $suffix = Str::lower(Str::random(10));
 $password = Str::random(32);
-$user = new User;
-$user->forceFill(['name' => 'Проверка редактора', 'email' => 'editor-'.$suffix.'@example.test', 'password' => $password, 'is_admin' => true])->save();
+$user = new AdminUser;
+$user->forceFill(['name' => 'Проверка редактора', 'email' => 'editor-'.$suffix.'@example.test', 'password' => $password, 'admin_role_id' => AdminRole::where('code', 'owner')->firstOrFail()->id, 'active' => true])->save();
 $categories = [];
 $collections = [];
 foreach (['A', 'B'] as $label) {

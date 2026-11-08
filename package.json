@@ -8,7 +8,8 @@
     "test:visual": "node tests/browser/visual.mjs",
     "test:catalog-cart": "node tests/browser/catalog-cart.mjs",
     "test:purchase-appearance": "node tests/browser/purchase-appearance.mjs",
-    "test:product-editor": "node tests/browser/product-editor.mjs"
+    "test:product-editor": "node tests/browser/product-editor.mjs",
+    "test:admin-access": "node tests/browser/admin-access.mjs"
   },
   "dependencies": {
     "@fontsource-variable/manrope": "^5.3.0",

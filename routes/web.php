@@ -9,7 +9,7 @@ Route::get('/catalog', [ShopController::class, 'catalog'])->name('catalog');
 Route::get('/products/{slug}', [ShopController::class, 'product'])->name('product');
 Route::get('/product-page.html', fn () => redirect('/catalog'));
 Route::post('/cart', [ShopController::class, 'cart'])->middleware('throttle:120,1,cart');
-Route::middleware('guest')->group(function () {
+Route::middleware('guest:web')->group(function () {
     Route::get('/login', fn (ShopController $c) => $c->render('lk-login', ['authMode' => 'login']))->name('login');
     Route::get('/register', fn (ShopController $c) => $c->render('lk-login', ['authMode' => 'register']));
     Route::get('/forgot-password', fn (ShopController $c) => $c->render('lk-login', ['authMode' => 'forgot']))->name('password.request');
@@ -19,7 +19,7 @@ Route::middleware('guest')->group(function () {
     Route::post('/forgot-password', [AuthController::class, 'forgot'])->middleware('throttle:4,1,forgot');
     Route::post('/reset-password', [AuthController::class, 'reset'])->middleware('throttle:6,1,reset');
 });
-Route::middleware('auth')->group(function () {
+Route::middleware('auth:web')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/checkout', [ShopController::class, 'checkout'])->name('checkout');
     Route::post('/checkout', [ShopController::class, 'place'])->middleware('throttle:10,1,checkout');

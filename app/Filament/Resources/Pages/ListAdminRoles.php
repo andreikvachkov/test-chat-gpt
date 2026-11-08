@@ -1,0 +1,17 @@
+<?php
+
+namespace App\Filament\Resources\Pages;
+
+use App\Filament\Resources\AdminRoleResource;
+use Filament\Actions\CreateAction;
+use Filament\Resources\Pages\ListRecords;
+
+class ListAdminRoles extends ListRecords
+{
+    protected static string $resource = AdminRoleResource::class;
+
+    protected function getHeaderActions(): array
+    {
+        return [CreateAction::make()];
+    }
+}

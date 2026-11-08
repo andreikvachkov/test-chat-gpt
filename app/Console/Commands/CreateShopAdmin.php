@@ -2,7 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
+use App\Models\AdminRole;
+use App\Models\AdminUser;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
@@ -16,8 +17,8 @@ class CreateShopAdmin extends Command
     public function handle(): int
     {
         $email = strtolower($this->argument('email'));
-        if (User::where('email', $email)->exists()) {
-            $this->error('Пользователь уже существует. Права автоматически не изменяются.');
+        if (AdminUser::where('email', $email)->exists()) {
+            $this->error('Сотрудник с такой почтой уже существует. Права автоматически не изменяются.');
 
             return self::FAILURE;
         }
@@ -29,9 +30,8 @@ class CreateShopAdmin extends Command
 
             return self::FAILURE;
         }
-        $user = User::create(compact('name', 'email', 'password'));
-        $user->forceFill(['is_admin' => true])->save();
-        $this->info('Администратор создан. Вход: /admin');
+        AdminUser::create(compact('name', 'email', 'password') + ['admin_role_id' => AdminRole::where('code', 'owner')->firstOrFail()->id, 'active' => true]);
+        $this->info('Отдельная учётная запись владельца создана. Вход: /admin. Покупательские аккаунты не изменены.');
 
         return self::SUCCESS;
     }

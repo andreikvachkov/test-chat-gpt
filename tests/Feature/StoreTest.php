@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contracts\PaymentGateway;
 use App\Filament\Resources\Pages\ManageContentEntry;
+use App\Models\AdminUser;
 use App\Models\ContentEntry;
 use App\Models\Order;
 use App\Models\Page;
@@ -174,11 +175,10 @@ class StoreTest extends TestCase
     public function test_admin_is_forbidden_for_customers_and_all_resources_render_for_admins(): void
     {
         $customer = User::factory()->create();
-        $this->actingAs($customer)->get('/admin/products')->assertForbidden();
-        $admin = User::factory()->create();
-        $admin->forceFill(['is_admin' => true])->save();
-        $this->actingAs($admin);
-        foreach (['products', 'product-collections', 'product-attributes', 'categories', 'content-entries', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
+        $this->actingAs($customer, 'web')->get('/admin/products')->assertRedirect('/admin/login');
+        $admin = AdminUser::factory()->create();
+        $this->actingAs($admin, 'admin');
+        foreach (['staff', 'roles', 'products', 'product-collections', 'product-attributes', 'categories', 'content-entries', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
             $this->get('/admin/'.$resource)->assertOk();
         }
     }
@@ -248,9 +248,8 @@ class StoreTest extends TestCase
 
     public function test_admin_can_edit_a_content_block_through_filament(): void
     {
-        $admin = User::factory()->create();
-        $admin->forceFill(['is_admin' => true])->save();
-        $this->actingAs($admin);
+        $admin = AdminUser::factory()->create();
+        $this->actingAs($admin, 'admin');
         $entry = ContentEntry::where('type', 'text')->first();
         Livewire::test(ManageContentEntry::class)
             ->callAction(TestAction::make('edit')->table($entry), data: ['value' => 'Текст из админки'])->assertHasNoActionErrors();

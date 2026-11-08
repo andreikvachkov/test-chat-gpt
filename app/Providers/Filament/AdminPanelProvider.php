@@ -2,6 +2,7 @@
 
 namespace App\Providers\Filament;
 
+use App\Filament\Pages\Auth\Login;
 use App\Filament\Resources;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -24,11 +25,11 @@ class AdminPanelProvider extends PanelProvider
 {
     public function panel(Panel $panel): Panel
     {
-        return $panel->default()->id('admin')->path('admin')->login()->brandName('Kamali')->pages([Dashboard::class])->colors(['primary' => Color::Rose])->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
+        return $panel->default()->id('admin')->path('admin')->authGuard('admin')->authPasswordBroker('admins')->login(Login::class)->brandName('Kamali')->pages([Dashboard::class])->colors(['primary' => Color::Rose])->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->navigation(fn (NavigationBuilder $builder) => $this->shopNavigation($builder))
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, AuthenticateSession::class, ShareErrorsFromSession::class, VerifyCsrfToken::class, SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class,
-            ])->authMiddleware([Authenticate::class]);
+            ])->authMiddleware([Authenticate::class], isPersistent: true);
     }
 
     private function shopNavigation(NavigationBuilder $builder): NavigationBuilder
@@ -39,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             'Каталог' => [Resources\ProductResource::class, Resources\CategoryResource::class, Resources\ProductAttributeResource::class, Resources\ProductCollectionResource::class],
             'Продажи' => [Resources\OrderResource::class, Resources\UserResource::class],
             'Контент' => [Resources\PageResource::class, Resources\ContentEntryResource::class, Resources\MediaAssetResource::class],
+            'Администрирование' => [Resources\AdminUserResource::class, Resources\AdminRoleResource::class],
         ] as $label => $resources) {
             $items = [];
             foreach ($resources as $resource) {

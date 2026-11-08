@@ -6,6 +6,7 @@ use App\Filament\Resources\Pages\CreateProduct;
 use App\Filament\Resources\Pages\EditProduct;
 use App\Filament\Resources\Pages\ManageProductAttribute;
 use App\Filament\Resources\Pages\ManageProductCollection;
+use App\Models\AdminUser;
 use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\Product;
@@ -59,8 +60,8 @@ class ProductEditorTest extends TestCase
 
     public function test_product_pages_use_separate_editor_and_hide_legacy_fields(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $this->actingAs($admin);
+        $admin = AdminUser::factory()->create();
+        $this->actingAs($admin, 'admin');
         $product = Product::first();
         $this->get('/admin/products/create')->assertOk()->assertSee('Краткое описание')->assertSee('Изображение товара')->assertDontSee('ID в 1С')->assertDontSee('Состав')->assertDontSee('Применение');
         $this->get('/admin/products/'.$product->id.'/edit')->assertOk()->assertSee('Категории')->assertSee('Подборки')->assertSee('Галерея товара');
@@ -209,8 +210,8 @@ class ProductEditorTest extends TestCase
 
     public function test_scheduled_date_roundtrips_through_admin_and_duplicate_sku_errors_are_shown_on_form(): void
     {
-        $admin = User::factory()->create(['is_admin' => true]);
-        $this->actingAs($admin);
+        $admin = AdminUser::factory()->create();
+        $this->actingAs($admin, 'admin');
         $editor = app(ProductEditor::class);
         $date = now()->addDays(2)->startOfMinute();
         $product = $editor->save(null, $this->data(['status' => 'scheduled', 'published_at' => $date->toDateTimeString()]));
@@ -244,7 +245,7 @@ class ProductEditorTest extends TestCase
 
     public function test_attributes_values_and_collections_can_be_created_through_admin(): void
     {
-        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        $this->actingAs(AdminUser::factory()->create(), 'admin');
         Livewire::test(ManageProductAttribute::class)->callAction('create', data: ['name' => 'Цвет', 'slug' => 'color', 'values' => [
             ['name' => 'Красный', 'slug' => 'red'], ['name' => 'Белый', 'slug' => 'white'],
         ]])->assertHasNoActionErrors();

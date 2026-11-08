@@ -14,7 +14,7 @@ class ProductAttributeResource extends ShopResource
 
     public static function canDelete($record): bool
     {
-        return ! Product::withTrashed()->whereJsonContains('attribute_config', [['attribute_id' => $record->id]])->exists();
+        return parent::canDelete($record) && ! Product::withTrashed()->whereJsonContains('attribute_config', [['attribute_id' => $record->id]])->exists();
     }
 
     public static function getNavigationLabel(): string

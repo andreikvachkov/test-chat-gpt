@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Models\MediaAsset;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -19,7 +20,7 @@ abstract class ShopResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->columns(static::columns())->recordActions([EditAction::make(), ...(static::allowDeletion() ? [DeleteAction::make()] : [])])->defaultSort('id', 'desc');
+        return $table->columns(static::columns())->recordActions([ViewAction::make(), EditAction::make(), ...(static::allowDeletion() ? [DeleteAction::make()] : [])])->defaultSort('id', 'desc');
     }
 
     public static function fields(): array

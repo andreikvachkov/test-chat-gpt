@@ -17,7 +17,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->web(append: [HandleInertiaRequests::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->respond(function (Response $response) {
+        $exceptions->respond(function ($response) {
+            if (! $response instanceof Response) {
+                return $response;
+            }
             if ($response->getStatusCode() === 404 && ! request()->expectsJson() && ! request()->is('admin', 'admin/*', 'livewire/*', 'assets/*', 'build/*', 'storage/*')) {
                 return app(ShopController::class)->render('404')->toResponse(request())->setStatusCode(404);
             }

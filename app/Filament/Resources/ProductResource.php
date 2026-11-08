@@ -13,6 +13,7 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\RestoreAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -104,7 +105,7 @@ class ProductResource extends Resource
                                         TextInput::make('stock')->label('Остаток')->numeric()->integer()->minValue(0)->required(), Toggle::make('active')->label('Включена')->default(true),
                                     ])->columns(2)->itemLabel(fn (array $state) => $state['name'] ?? 'Вариация'),
                                 ])->footerActions([
-                                    Action::make('generateVariations')->label('Сформировать вариации из атрибутов')->action(function (Get $get, Set $set, ?Product $record) {
+                                    Action::make('generateVariations')->label('Сформировать вариации из атрибутов')->authorize(fn (?Product $record) => $record ? static::canEdit($record) : static::canCreate())->action(function (Get $get, Set $set, ?Product $record) {
                                         try {
                                             $set('variants', app(ProductEditor::class)->generate($get('attribute_config') ?? [], $get('variants') ?? [], $get('sku') ?? '', $record));
                                         } catch (ValidationException $e) {
@@ -136,7 +137,7 @@ class ProductResource extends Resource
             ->disk('public')->directory('products')->visibility('public')->fetchFileInformation(false)->maxSize(10240)->multiple($multiple)->reorderable($multiple)->appendFiles()->panelLayout($multiple ? 'grid' : null)
             ->getUploadedFileUsing(fn (string $file) => ProductMedia::info($file))
             ->saveUploadedFileUsing(fn (TemporaryUploadedFile $file) => ProductMedia::upload($file))
-            ->hintAction(Action::make('library_'.$name)->label('Медиатека')->modalHeading($multiple ? 'Изображения галереи' : 'Изображение товара')->modalWidth('4xl')->stickyModalHeader()->stickyModalFooter()->modalSubmitActionLabel('Выбрать')->schema([
+            ->hintAction(Action::make('library_'.$name)->label('Медиатека')->authorize(fn (?Product $record) => $record ? static::canEdit($record) : static::canCreate())->modalHeading($multiple ? 'Изображения галереи' : 'Изображение товара')->modalWidth('4xl')->stickyModalHeader()->stickyModalFooter()->modalSubmitActionLabel('Выбрать')->schema([
                 ($multiple ? CheckboxList::make('paths') : Radio::make('path'))->label('Выберите изображение')->options(fn () => collect(ProductMedia::options())->map(fn ($html) => new HtmlString($html))->all())->columns(3)->required(),
             ])->action(function (array $data, Set $set, Get $get) use ($name, $multiple) {
                 $paths = $multiple ? array_values(array_unique([...array_values($get($name) ?? []), ...$data['paths']])) : [$data['path']];
@@ -187,8 +188,8 @@ class ProductResource extends Resource
             TextColumn::make('status')->label('Статус')->formatStateUsing(fn ($state, Product $record) => $record->trashed() ? 'В корзине' : (Product::STATUSES[$state] ?? $state))->badge(),
             TextColumn::make('published_at')->label('Публикация')->dateTime('d.m.Y H:i', 'Europe/Moscow')->sortable(),
         ])->filters([SelectFilter::make('status')->label('Статус')->options(Product::STATUSES), SelectFilter::make('type')->label('Тип')->options(['simple' => 'Простой', 'variable' => 'Вариативный']), TrashedFilter::make()])
-            ->recordActions([EditAction::make()->url(fn (Product $record) => static::getUrl('edit', ['record' => $record])), DeleteAction::make(), RestoreAction::make()])
-            ->recordUrl(fn (Product $record) => static::getUrl('edit', ['record' => $record]))->defaultSort('id', 'desc');
+            ->recordActions([ViewAction::make()->url(fn (Product $record) => static::getUrl('view', ['record' => $record])), EditAction::make()->url(fn (Product $record) => static::getUrl('edit', ['record' => $record])), DeleteAction::make(), RestoreAction::make()])
+            ->recordUrl(fn (Product $record) => static::getUrl(static::canEdit($record) ? 'edit' : 'view', ['record' => $record]))->defaultSort('id', 'desc');
     }
 
     public static function getEloquentQuery(): Builder
@@ -198,6 +199,6 @@ class ProductResource extends Resource
 
     public static function getPages(): array
     {
-        return ['index' => Pages\ListProducts::route('/'), 'create' => Pages\CreateProduct::route('/create'), 'edit' => Pages\EditProduct::route('/{record}/edit')];
+        return ['index' => Pages\ListProducts::route('/'), 'create' => Pages\CreateProduct::route('/create'), 'edit' => Pages\EditProduct::route('/{record}/edit'), 'view' => Pages\ViewProduct::route('/{record}')];
     }
 }

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\ProductEditor;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -16,7 +17,9 @@ class ProductMigrationTest extends TestCase
 
     public function test_legacy_catalog_migrates_without_losing_images_stock_categories_or_order_links(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 1, '--force' => true])->assertSuccessful();
+        while (Schema::hasColumn('products', 'sku')) {
+            $this->artisan('migrate:rollback', ['--step' => 1, '--force' => true])->assertSuccessful();
+        }
         $now = now();
         $category = DB::table('categories')->insertGetId(['name' => 'Старая категория', 'slug' => 'legacy-category', 'created_at' => $now, 'updated_at' => $now]);
         $id = DB::table('products')->insertGetId(['name' => 'Старый товар', 'slug' => 'legacy-product', 'category_id' => $category, 'external_id' => 'legacy-1c-id',

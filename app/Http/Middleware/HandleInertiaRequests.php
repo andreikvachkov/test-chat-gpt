@@ -13,9 +13,9 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return [...parent::share($request),
-            'auth' => ['user' => fn () => $request->user()?->only('id', 'name', 'email', 'phone', 'last_name', 'middle_name', 'birthdate')],
+            'auth' => ['user' => fn () => $request->user('web')?->only('id', 'name', 'email', 'phone', 'last_name', 'middle_name', 'birthdate')],
             'cart' => fn () => app(Cart::class)->summary(),
-            'favourites' => fn () => $request->user()?->favourites()->pluck('products.id') ?? [],
+            'favourites' => fn () => $request->user('web')?->favourites()->pluck('products.id') ?? [],
             'flash' => ['status' => fn () => $request->session()->get('status')],
         ];
     }
