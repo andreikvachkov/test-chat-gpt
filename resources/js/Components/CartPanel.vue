@@ -95,6 +95,12 @@ const cart = computed(() => page.props.cart);
                         <div class="popup-cart__product__text">
                             {{ item.variant }}
                         </div>
+                        <p
+                            v-if="item.backorder_notice"
+                            class="popup-cart__product__text"
+                        >
+                            Под заказ
+                        </p>
                         <p v-if="!item.available" class="store-errors">
                             {{ text("shared.d43140447c08") }}
                         </p>

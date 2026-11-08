@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Models\AdminUser;
 use App\Models\Product;
 use App\Models\User;
-use App\Services\Checkout;
 use Database\Seeders\DemoCatalogSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Hash;
@@ -28,7 +27,8 @@ class AdminMigrationTest extends TestCase
         $customer = User::factory()->create();
         $this->seed(DemoCatalogSeeder::class);
         $variant = Product::first()->variants()->first();
-        $order = app(Checkout::class)->place($buyerAdmin, ['checkout_token' => (string) Str::uuid(), 'name' => 'Покупатель', 'email' => $buyerAdmin->email, 'phone' => '+79991234567', 'address' => 'Адрес', 'delivery_method' => 'cdek', 'expected_subtotal_minor' => 62000], [$variant->id => 1]);
+        $order = $buyerAdmin->orders()->create(['number' => (string) Str::uuid(), 'checkout_token' => (string) Str::uuid(), 'name' => 'Покупатель', 'email' => $buyerAdmin->email, 'phone' => '+79991234567', 'address' => 'Адрес', 'delivery_method' => 'cdek', 'subtotal_minor' => 62000]);
+        $order->items()->create(['product_variant_id' => $variant->id, 'sku' => $variant->sku, 'name' => 'Существующий товар', 'quantity' => 1, 'price_minor' => 62000]);
         $this->artisan('migrate', ['--force' => true])->assertSuccessful();
         $this->assertNull(User::find($plain->id));
         $this->assertTrue(Hash::check('LegacyPassword123', AdminUser::where('email', $plain->email)->firstOrFail()->password));

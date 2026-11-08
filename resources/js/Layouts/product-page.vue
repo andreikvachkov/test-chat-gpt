@@ -751,7 +751,7 @@ const gallery = computed(() => [
             </div>
         </div>
     </section>
-    <section class="product-reviews">
+    <section class="product-reviews" v-if="product.reviews_enabled">
         <div class="container">
             <div class="product-reviews__wrap">
                 <div class="product-reviews__header">

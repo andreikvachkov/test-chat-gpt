@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\ProductData;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -13,15 +14,17 @@ class Product extends Model
 
     public const STATUSES = ['draft' => 'Черновик', 'pending' => 'На утверждении', 'private' => 'Личный', 'published' => 'Опубликован', 'scheduled' => 'Запланирован'];
 
-    protected $fillable = ['category_id', 'external_id', 'name', 'slug', 'description', 'short_description', 'ingredients', 'usage', 'image', 'gallery', 'badge', 'published', 'sku', 'article', 'type', 'attribute_config', 'status', 'published_at'];
+    protected $fillable = ['category_id', 'external_id', 'name', 'slug', 'description', 'short_description', 'ingredients', 'usage', 'image', 'gallery', 'badge', 'published', 'sku', 'article', 'type', 'attribute_config', 'status', 'published_at', 'details', 'inventory_stock'];
 
-    protected $hidden = ['external_id', 'ingredients', 'usage', 'badge', 'category_id'];
+    protected $attributes = ['type' => 'simple'];
 
-    protected $appends = ['description_html'];
+    protected $hidden = ['details', 'inventory_stock', 'external_id', 'ingredients', 'usage', 'badge', 'category_id'];
+
+    protected $appends = ['description_html', 'reviews_enabled'];
 
     protected function casts(): array
     {
-        return ['published' => 'boolean', 'gallery' => 'array', 'attribute_config' => 'array', 'published_at' => 'datetime'];
+        return ['published' => 'boolean', 'gallery' => 'array', 'attribute_config' => 'array', 'published_at' => 'datetime', 'details' => 'array', 'inventory_stock' => 'integer'];
     }
 
     protected static function booted(): void
@@ -52,12 +55,26 @@ class Product extends Model
 
     public function getDescriptionHtmlAttribute(): string
     {
+        if (blank($this->description)) {
+            return '';
+        }
+
         return RichContentRenderer::make($this->description ?? '')->toHtml();
+    }
+
+    public function getReviewsEnabledAttribute(): bool
+    {
+        return (bool) $this->settings()['reviews_enabled'];
     }
 
     public function variants()
     {
         return $this->hasMany(ProductVariant::class)->whereNull('retired_at');
+    }
+
+    public function settings(): array
+    {
+        return array_replace(ProductData::defaults($this->type), $this->details ?? []);
     }
 
     public function category()

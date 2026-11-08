@@ -46,7 +46,7 @@ class ProductMedia
     public static function options(): array
     {
         $paths = collect(glob(public_path('assets/images/*')))->filter(fn ($p) => is_file($p) && in_array(strtolower(pathinfo($p, PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png', 'webp', 'gif', 'avif']))->mapWithKeys(fn ($p) => ['/assets/images/'.basename($p) => basename($p)])
-            ->merge(MediaAsset::all()->mapWithKeys(fn ($m) => [$m->path => $m->name]));
+            ->merge(MediaAsset::where(fn ($q) => $q->where('mime_type', 'like', 'image/%')->orWhereNull('mime_type'))->get()->mapWithKeys(fn ($m) => [$m->path => $m->name]));
 
         return $paths->mapWithKeys(fn ($name, $file) => [$file => '<img src="'.e(self::url($file)).'" alt="" loading="lazy" style="width:100%;height:100px;object-fit:contain"><span>'.e($name).'</span>'])->all();
     }

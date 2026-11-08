@@ -96,6 +96,10 @@ const statuses = {
                             {{ item.quantity }}
                             {{ text("shared.3973da44c678") }}
                             {{ money(item.price_minor * item.quantity) }}
+                            <p v-if="item.backordered">Под заказ</p>
+                            <p v-if="item.purchase_note">
+                                {{ item.purchase_note }}
+                            </p>
                         </div>
                         <p class="store-order">
                             {{ text("shared.85240aac7a0b") }}

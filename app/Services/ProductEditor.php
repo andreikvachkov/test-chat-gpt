@@ -28,20 +28,25 @@ class ProductEditor
 
     public function state(Product $product): array
     {
+        $product = $product->fresh() ?? $product;
         $variants = $product->variants()->orderBy('id')->get()->map(fn ($v) => $this->variantState($v))->all();
 
         return [...$product->getAttributes(), 'status' => $product->status === 'scheduled' && $product->published_at?->lte(now()) ? 'published' : $product->status, 'published_at' => $product->published_at?->format('Y-m-d H:i:s'),
+            'type' => in_array($product->type, ['simple', 'variable']) ? $product->type : 'simple', 'details' => $product->settings(),
             'image' => ProductMedia::fieldPath($product->image), 'gallery' => array_map(ProductMedia::fieldPath(...), $product->gallery ?? []),
             'attribute_config' => $product->attribute_config ?? [], 'category_ids' => $product->categories()->pluck('categories.id')->all(),
             'collection_ids' => $product->collections()->pluck('product_collections.id')->all(), 'variants' => $variants,
-            'simple' => ['price' => $variants[0]['price'] ?? '0.00', 'stock' => $variants[0]['stock'] ?? 0, 'name' => $variants[0]['name'] ?? $product->name],
+            'simple' => array_replace($variants[0] ?? [], ['price' => $variants[0]['price'] ?? '0.00', 'stock' => $variants[0]['stock'] ?? 0, 'name' => $variants[0]['name'] ?? $product->name]),
         ];
     }
 
     public function variantState(ProductVariant $variant): array
     {
+        $details = array_replace(ProductData::defaults('variable', true), $variant->details ?? []);
+        $details['image'] = ProductMedia::fieldPath($details['image'] ?? null);
+
         return collect($variant->getAttributes())->only(['id', 'sku', 'article', 'name', 'stock', 'combination_key'])->all()
-            + ['price' => self::money($variant->price_minor), 'active' => $variant->active, 'attribute_value_ids' => $variant->attribute_value_ids ?? []];
+            + ['price' => self::money((int) $variant->getRawOriginal('price_minor')), 'sale_price' => $variant->sale_price_minor !== null ? self::money($variant->sale_price_minor) : null, 'sale_starts_at' => $variant->sale_starts_at?->timezone('Europe/Moscow')->format('Y-m-d'), 'sale_ends_at' => $variant->sale_ends_at?->timezone('Europe/Moscow')->format('Y-m-d'), 'details' => $details, 'active' => $variant->active, 'attribute_value_ids' => $variant->attribute_value_ids ?? []];
     }
 
     public function config(array $config): array
@@ -103,7 +108,7 @@ class ProductEditor
         $result = [];
         foreach ($this->combinations($config) as $key => $combination) {
             $result[] = ($old[$key] ?? ['sku' => Str::substr($sku, 0, 254 - strlen(implode('-', $combination['attribute_value_ids']))).'-'.implode('-', $combination['attribute_value_ids']), 'price' => '0.00', 'stock' => 0, 'active' => true])
-                + ['combination_key' => $key, ...$combination];
+                + ['combination_key' => $key, ...$combination, 'details' => ProductData::defaults('variable', true), 'sale_price' => null, 'sale_starts_at' => null, 'sale_ends_at' => null];
         }
 
         return $result;
@@ -111,6 +116,8 @@ class ProductEditor
 
     public function save(?Product $product, array $data): Product
     {
+        $data['type'] ??= 'simple';
+        $data['details'] = ProductData::validate(array_replace(ProductData::defaults($data['type']), $product?->details ?? [], $data['details'] ?? []));
         $data['variants'] = array_values($data['variants'] ?? []);
         $data['sku'] = trim($data['sku'] ?? '');
         $priceRule = ['required', 'regex:/^\d{1,8}([.,]\d{1,2})?$/'];
@@ -120,9 +127,13 @@ class ProductEditor
             'description' => 'nullable|string', 'short_description' => 'nullable|string', 'status' => ['required', Rule::in(array_keys(Product::STATUSES))],
             'published_at' => 'nullable|date', 'category_ids' => 'array', 'category_ids.*' => 'integer|distinct|exists:categories,id',
             'collection_ids' => 'array', 'collection_ids.*' => 'integer|distinct|exists:product_collections,id',
-            'simple.price' => $data['type'] === 'simple' ? $priceRule : ['nullable'], 'simple.stock' => $data['type'] === 'simple' ? 'required|integer|min:0|max:100000000' : 'nullable',
+            'simple.price' => $data['type'] === 'simple' ? $priceRule : ['nullable'], 'simple.stock' => $data['type'] === 'simple' ? 'required|integer|min:-100000000|max:100000000' : 'nullable',
+            'inventory_stock' => 'nullable|integer|min:-100000000|max:100000000',
             'variants' => $data['type'] === 'variable' ? 'required|array|min:1|max:100' : 'array',
         ])->validate();
+        if (($data['inventory_stock'] ?? 0) < 0 && $data['details']['backorders'] === 'no') {
+            throw ValidationException::withMessages(['inventory_stock' => 'Отрицательный остаток разрешён только для предзаказов.']);
+        }
         $config = $this->config($data['attribute_config'] ?? []);
         if ($data['status'] === 'scheduled' && (empty($data['published_at']) || ! Carbon::parse($data['published_at'])->isFuture())) {
             throw ValidationException::withMessages(['published_at' => 'Укажите будущую дату отложенной публикации.']);
@@ -130,7 +141,7 @@ class ProductEditor
         if ($data['type'] === 'variable') {
             Validator::make($data, [
                 'variants.*.sku' => 'required|string|max:255', 'variants.*.article' => 'nullable|string|max:255',
-                'variants.*.price' => $priceRule, 'variants.*.stock' => 'required|integer|min:0|max:100000000', 'variants.*.active' => 'boolean',
+                'variants.*.price' => $priceRule, 'variants.*.stock' => 'required|integer|min:-100000000|max:100000000', 'variants.*.active' => 'boolean',
                 'variants.*.combination_key' => 'required|string|distinct', 'variants.*.id' => 'nullable|integer|distinct',
             ])->validate();
             $combinations = $this->combinations($config);
@@ -156,10 +167,15 @@ class ProductEditor
                 throw ValidationException::withMessages(['sku' => 'Этот SKU уже занят другим товаром или вариацией.']);
             }
             $rows = $data['type'] === 'simple'
-                ? [['id' => $product?->variants()->orderBy('id')->value('id'), 'sku' => $data['sku'], 'article' => $data['article'] ?? null, 'name' => $data['simple']['name'] ?? $data['name'], 'price' => $data['simple']['price'], 'stock' => $data['simple']['stock'], 'active' => true, 'combination_key' => null, 'attribute_value_ids' => []]]
+                ? [['id' => $product?->variants()->orderBy('id')->value('id'), 'sku' => $data['sku'], 'article' => $data['article'] ?? null, 'name' => $data['simple']['name'] ?? $data['name'], 'price' => $data['simple']['price'], 'stock' => $data['simple']['stock'], 'active' => true, 'combination_key' => null, 'attribute_value_ids' => [], 'details' => $data['details'], 'sale_price' => $data['simple']['sale_price'] ?? null, 'sale_starts_at' => $data['simple']['sale_starts_at'] ?? null, 'sale_ends_at' => $data['simple']['sale_ends_at'] ?? null]]
                 : $data['variants'];
             $skus = [];
             foreach ($rows as $i => &$row) {
+                $row['details'] = ProductData::validate(array_replace(ProductData::defaults('variable', true), $row['details'] ?? []), 'variants.'.$i.'.details');
+                $this->validatePricing($row, $data['type'] === 'simple' ? 'simple' : 'variants.'.$i);
+                if ($row['stock'] < 0 && $row['details']['backorders'] === 'no') {
+                    throw ValidationException::withMessages([($data['type'] === 'simple' ? 'simple' : 'variants.'.$i).'.stock' => 'Отрицательный остаток разрешён только для предзаказов.']);
+                }
                 $row['sku'] = trim($row['sku']);
                 $key = Str::lower($row['sku']);
                 $id = $row['id'] ?? null;
@@ -178,7 +194,7 @@ class ProductEditor
             }
             unset($row);
             $product ??= new Product;
-            $product->fill(collect($data)->only(['name', 'slug', 'sku', 'article', 'type', 'description', 'short_description', 'status', 'published_at'])->all());
+            $product->fill(collect($data)->only(['name', 'slug', 'sku', 'article', 'type', 'description', 'short_description', 'status', 'published_at', 'details', 'inventory_stock'])->all());
             $product->attribute_config = $config;
             $product->image = ProductMedia::url($data['image'] ?? null);
             $product->gallery = array_values(array_filter(array_map(ProductMedia::url(...), $data['gallery'] ?? [])));
@@ -188,8 +204,11 @@ class ProductEditor
             $ids = [];
             foreach ($rows as $row) {
                 $variant = isset($row['id']) ? ProductVariant::where('product_id', $product->id)->lockForUpdate()->findOrFail($row['id']) : new ProductVariant(['product_id' => $product->id]);
-                $variant->fill(collect($row)->only(['sku', 'article', 'name', 'stock', 'active', 'combination_key', 'attribute_value_ids'])->all());
+                $variant->fill(collect($row)->only(['sku', 'article', 'name', 'stock', 'active', 'combination_key', 'attribute_value_ids', 'details'])->all());
                 $variant->price_minor = self::minor((string) $row['price']);
+                $variant->sale_price_minor = filled($row['sale_price'] ?? null) ? self::minor((string) $row['sale_price']) : null;
+                $variant->sale_starts_at = filled($row['sale_starts_at'] ?? null) ? Carbon::parse($row['sale_starts_at'], 'Europe/Moscow')->startOfDay()->utc() : null;
+                $variant->sale_ends_at = filled($row['sale_ends_at'] ?? null) ? Carbon::parse($row['sale_ends_at'], 'Europe/Moscow')->endOfDay()->utc() : null;
                 $variant->retired_at = null;
                 $variant->save();
                 $ids[] = $variant->id;
@@ -198,5 +217,18 @@ class ProductEditor
 
             return $product->fresh();
         }, 3);
+    }
+
+    private function validatePricing(array $row, string $prefix): void
+    {
+        $input = [];
+        data_set($input, $prefix, $row);
+        Validator::make($input, [$prefix.'.sale_price' => ['nullable', 'regex:/^\d{1,8}([.,]\d{1,2})?$/'], $prefix.'.sale_starts_at' => 'nullable|date', $prefix.'.sale_ends_at' => 'nullable|date'])->validate();
+        if (filled($row['sale_price'] ?? null) && self::minor((string) $row['sale_price']) >= self::minor((string) $row['price'])) {
+            throw ValidationException::withMessages([$prefix.'.sale_price' => 'Цена распродажи должна быть ниже обычной цены.']);
+        }
+        if (filled($row['sale_starts_at'] ?? null) && filled($row['sale_ends_at'] ?? null) && Carbon::parse($row['sale_ends_at'])->lt(Carbon::parse($row['sale_starts_at']))) {
+            throw ValidationException::withMessages([$prefix.'.sale_ends_at' => 'Окончание распродажи должно быть не раньше начала.']);
+        }
     }
 }

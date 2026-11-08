@@ -22,13 +22,15 @@ function add() {
 <template>
     <button
         class="product-hero__add-basket"
-        :disabled="!variant || !variant.stock || quantity >= variant.stock"
+        :disabled="
+            !variant || !variant.available || quantity >= variant.max_quantity
+        "
         @click="add"
     >
         {{
             !variant
                 ? "Выберите вариант"
-                : variant.stock
+                : variant.available
                   ? `Купить — ${money(variant.price_minor)}`
                   : "Нет в наличии"
         }}

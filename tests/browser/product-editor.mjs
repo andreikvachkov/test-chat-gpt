@@ -37,8 +37,10 @@ async function basic(kind) {
     await field("name").fill(`${kind} ${fixture.suffix}`);
     await field("slug").fill(`${kind.toLowerCase()}-${fixture.suffix}`);
     await field("short_description").fill("Краткое описание покупателю");
+    await page.getByRole("tab", { name: "Запасы", exact: true }).click();
     await field("sku").fill(`${kind}-${fixture.suffix}`);
     await field("article").fill(`ART-${kind}-${fixture.suffix}`);
+    await page.getByRole("tab", { name: "Основные", exact: true }).click();
     await field("status").selectOption("published");
     for (const item of [...fixture.categories, ...fixture.collections])
         await page
@@ -65,6 +67,7 @@ try {
         .first()
         .fill("Полное описание товара из редактора");
     await field("simple.price").fill("620.50");
+    await page.getByRole("tab", { name: "Запасы", exact: true }).click();
     await field("simple.stock").fill("5");
     await field("simple.name").fill("250 мл");
     const uploads = page.locator(".fi-fo-file-upload input[type=file]");
@@ -100,6 +103,7 @@ try {
     await page.getByRole("button", { name: /^(Create|Создать)$/ }).click();
     await page.waitForURL(/\/admin\/products\/\d+\/edit$/);
     const simpleEdit = page.url();
+    await page.getByRole("tab", { name: "Запасы", exact: true }).click();
     await expect(field("sku")).toHaveValue(`Simple-${fixture.suffix}`);
     await expect(page.locator(".filepond--item")).toHaveCount(3);
     await page.screenshot({
@@ -158,12 +162,12 @@ try {
             exact: true,
         })
         .click();
-    const prices = page.locator('input[id$=".price"]');
+    const prices = page.locator('input[id*=".variants."][id$=".price"]');
     await expect(prices).toHaveCount(4);
     for (let i = 0; i < 4; i++) {
         await prices.nth(i).fill(String(700 + i));
         await page
-            .locator('input[id$=".stock"]')
+            .locator('input[id*=".variants."][id$=".stock"]')
             .nth(i)
             .fill(String(3 + i));
     }
@@ -182,9 +186,9 @@ try {
             exact: true,
         })
         .click();
-    await expect(page.locator('input[id$=".price"]').nth(3)).toHaveValue(
-        "703.00",
-    );
+    await expect(
+        page.locator('input[id*=".variants."][id$=".price"]').nth(3),
+    ).toHaveValue("703.00");
     expect(
         await page
             .locator('input[id*=".variants."][id$=".sku"]')

@@ -24,6 +24,7 @@ foreach (['A', 'B'] as $label) {
     $categories[] = Category::create(['name' => 'Категория '.$suffix.' '.$label, 'slug' => 'category-'.$suffix.'-'.strtolower($label)])->only(['id', 'name', 'slug']);
     $collections[] = ProductCollection::create(['name' => 'Подборка '.$suffix.' '.$label, 'slug' => 'collection-'.$suffix.'-'.strtolower($label)])->only(['id', 'name', 'slug']);
 }
+Category::find($categories[1]['id'])->update(['parent_id' => $categories[0]['id']]);
 $attributes = [];
 foreach (['Объём' => ['100 мл', '250 мл'], 'Аромат' => ['Sultan', 'Vanilla']] as $name => $values) {
     $attribute = ProductAttribute::create(['name' => $name.' '.$suffix, 'slug' => Str::slug($name).'-'.$suffix]);

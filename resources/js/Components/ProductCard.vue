@@ -17,7 +17,7 @@ const collection = computed(() => props.product.collections?.[0]);
 const purchaseLabel = computed(() =>
     props.product.type === "variable"
         ? "Выбрать варианты"
-        : variant.value?.stock
+        : variant.value?.available
           ? `Купить ${props.product.name} - ${money(variant.value.price_minor)}`
           : "Нет в наличии",
 );
@@ -26,7 +26,7 @@ function buy() {
         window.location.assign("/products/" + props.product.slug);
         return;
     }
-    if (!variant.value?.stock) return;
+    if (!variant.value?.available) return;
     const q =
         page.props.cart.items.find((i) => i.id === variant.value.id)
             ?.quantity ?? 0;
@@ -46,7 +46,7 @@ function buy() {
             </a>
             <button
                 class="catalog-page__item__btn"
-                :disabled="product.type !== 'variable' && !variant?.stock"
+                :disabled="product.type !== 'variable' && !variant?.available"
                 @click="buy"
             >
                 {{ purchaseLabel }}
@@ -88,7 +88,7 @@ function buy() {
         </div>
         <button
             class="catalog-page__item__btn_mobile"
-            :disabled="product.type !== 'variable' && !variant?.stock"
+            :disabled="product.type !== 'variable' && !variant?.available"
             @click="buy"
         >
             {{ purchaseLabel }}

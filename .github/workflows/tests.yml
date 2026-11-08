@@ -74,5 +74,6 @@ jobs:
           umask 077
           php tests/Fixtures/product-editor-browser.php > /tmp/kamali-editor-browser.json
           npm run test:product-editor
+          npm run test:woo-admin
           php tests/Fixtures/admin-access-browser.php > /tmp/kamali-access-browser.json
           npm run test:admin-access

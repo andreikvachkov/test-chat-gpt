@@ -42,13 +42,19 @@ class ShopController extends Controller
             ->when($d['collection'] ?? null, fn ($q, $v) => $q->whereHas('collections', fn ($c) => $c->where('slug', $v)))
             ->when($d['q'] ?? null, fn ($q, $v) => $q->where(fn ($n) => $n->whereLike('name', '%'.$v.'%')->orWhereLike('short_description', '%'.$v.'%')->orWhereLike('description', '%'.$v.'%')->orWhereLike('article', '%'.$v.'%')));
         if (($d['sort'] ?? '') === 'stock') {
-            $query->whereHas('variants', fn ($q) => $q->where('active', true)->where('stock', '>', 0));
+            $query->whereHas('variants', fn ($q) => $q->where('active', true)->whereRaw("CASE
+                WHEN products.type = 'simple' THEN CASE
+                    WHEN COALESCE((products.details->>'manage_stock')::boolean, true) THEN (product_variants.stock > 0 OR COALESCE(products.details->>'backorders', 'no') != 'no')
+                    ELSE COALESCE(products.details->>'stock_status', 'instock') != 'outofstock' END
+                WHEN COALESCE((product_variants.details->>'manage_stock')::boolean, true) THEN (product_variants.stock > 0 OR COALESCE(product_variants.details->>'backorders', 'no') != 'no')
+                WHEN COALESCE((products.details->>'manage_stock')::boolean, false) THEN (products.inventory_stock > 0 OR COALESCE(products.details->>'backorders', 'no') != 'no')
+                ELSE COALESCE(product_variants.details->>'stock_status', 'instock') != 'outofstock' END"));
         }
         $sort = $d['sort'] ?? 'popular';
         if (in_array($sort, ['price_asc', 'price_desc'])) {
-            $query->orderBy(ProductVariant::selectRaw('MIN(price_minor)')->whereColumn('product_id', 'products.id')->whereNull('retired_at')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
+            $query->orderBy(ProductVariant::selectRaw('MIN(CASE WHEN sale_price_minor IS NOT NULL AND (sale_starts_at IS NULL OR sale_starts_at <= CURRENT_TIMESTAMP) AND (sale_ends_at IS NULL OR sale_ends_at >= CURRENT_TIMESTAMP) THEN sale_price_minor ELSE price_minor END)')->whereColumn('product_id', 'products.id')->whereNull('retired_at')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
         } else {
-            $query->orderBy('id');
+            $query->orderByRaw("COALESCE((details->>'menu_order')::integer, 0)")->orderBy('id');
         }
 
         return $this->render('catalog', ['products' => $query->paginate(12)->withQueryString(), 'categories' => Category::orderBy('id')->get(), 'filters' => $d]);
