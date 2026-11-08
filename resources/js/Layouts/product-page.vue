@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { usePage } from "@inertiajs/vue3";
 import { useContent } from "../composables/content";
 import { favourite } from "../composables/shop";
@@ -12,11 +12,36 @@ const variantId = ref(product.value.variants[0]?.id);
 const selected = computed(() =>
     product.value.variants.find((v) => v.id === variantId.value),
 );
-const gallery = computed(() =>
-    product.value.gallery?.length
-        ? product.value.gallery
-        : [product.value.image].filter(Boolean),
+const variationAttributes = computed(() =>
+    (page.props.attributes ?? []).filter((a) => a.for_variations),
 );
+const chosenValues = ref(
+    Object.fromEntries(
+        variationAttributes.value.map((a) => [
+            a.id,
+            a.values.find((v) =>
+                selected.value?.attribute_value_ids?.includes(v.id),
+            )?.id,
+        ]),
+    ),
+);
+watch(
+    chosenValues,
+    (values) => {
+        if (product.value.type !== "variable") return;
+        variantId.value = product.value.variants.find((v) =>
+            variationAttributes.value.every((a) =>
+                v.attribute_value_ids?.includes(Number(values[a.id])),
+            ),
+        )?.id;
+    },
+    { deep: true },
+);
+const gallery = computed(() => [
+    ...new Set(
+        [product.value.image, ...(product.value.gallery ?? [])].filter(Boolean),
+    ),
+]);
 </script>
 <template>
     <section class="product-hero">
@@ -45,11 +70,12 @@ const gallery = computed(() =>
                     </div>
                 </div>
                 <div class="product-hero__tags">
-                    <span class="tag">
-                        {{ text("product-page.cc8e1307f68b") }}
-                    </span>
-                    <span class="tag">
-                        {{ text("product-page.4687617547b3") }}
+                    <span
+                        class="tag"
+                        v-for="collection in product.collections"
+                        :key="collection.id"
+                    >
+                        {{ collection.name }}
                     </span>
                 </div>
                 <button
@@ -78,16 +104,22 @@ const gallery = computed(() =>
                             <h1 class="product-hero__title">
                                 {{ product.name }}
                             </h1>
-                            <p class="product-hero__art">
+                            <p
+                                class="product-hero__art"
+                                v-if="selected?.article || product.article"
+                            >
                                 {{ text("product-page.a44e57d774e9") }}
-                                <span>{{ selected?.sku }}</span>
+                                <span>{{
+                                    selected?.article || product.article
+                                }}</span>
                             </p>
                             <div class="product-hero__text">
-                                {{ product.description }}
+                                {{ product.short_description }}
                             </div>
                         </div>
                         <div
                             class="product-hero__variants horizontal-scrolling scrollable"
+                            v-if="product.type !== 'variable'"
                         >
                             <div
                                 :key="variant.id"
@@ -104,7 +136,10 @@ const gallery = computed(() =>
                                 >
                             </div>
                         </div>
-                        <div class="product-hero__size">
+                        <div
+                            class="product-hero__size"
+                            v-if="product.type !== 'variable'"
+                        >
                             <div
                                 class="radio-item"
                                 v-for="variant in product.variants"
@@ -123,6 +158,47 @@ const gallery = computed(() =>
                                 >
                             </div>
                         </div>
+                        <template v-else>
+                            <div
+                                v-for="attribute in variationAttributes"
+                                :key="attribute.id"
+                            >
+                                <p class="product-hero__text">
+                                    {{ attribute.name }}
+                                </p>
+                                <div class="product-hero__size">
+                                    <div
+                                        class="radio-item"
+                                        v-for="value in attribute.values"
+                                        :key="value.id"
+                                    >
+                                        <input
+                                            class="radio-input"
+                                            type="radio"
+                                            :id="
+                                                'attribute-' +
+                                                attribute.id +
+                                                '-' +
+                                                value.id
+                                            "
+                                            :name="'attribute-' + attribute.id"
+                                            :value="value.id"
+                                            v-model="chosenValues[attribute.id]"
+                                        />
+                                        <label
+                                            class="radio-label"
+                                            :for="
+                                                'attribute-' +
+                                                attribute.id +
+                                                '-' +
+                                                value.id
+                                            "
+                                            >{{ value.name }}</label
+                                        >
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
                         <div class="product-hero__buttons">
                             <ProductPurchase
                                 :product="product"
@@ -276,30 +352,27 @@ const gallery = computed(() =>
                         <button class="active" data-tab="product-tab-1">
                             {{ text("product-page.a0eed89a3b5b") }}
                         </button>
-                        <button data-tab="product-tab-2">
-                            {{ text("product-page.9442930c7960") }}
-                        </button>
-                        <button data-tab="product-tab-3">
-                            {{ text("product-page.75602466f333") }}
-                        </button>
                     </div>
                     <div
                         class="product-tab-section__text active"
                         data-tab="product-tab-1"
                     >
-                        <p>{{ product.description }}</p>
-                    </div>
-                    <div
-                        class="product-tab-section__text"
-                        data-tab="product-tab-2"
-                    >
-                        <p>{{ product.ingredients }}</p>
-                    </div>
-                    <div
-                        class="product-tab-section__text"
-                        data-tab="product-tab-3"
-                    >
-                        <p>{{ product.usage }}</p>
+                        <div v-html="product.description_html"></div>
+                        <template
+                            v-for="attribute in (
+                                page.props.attributes ?? []
+                            ).filter((a) => a.visible)"
+                            :key="attribute.id"
+                        >
+                            <p>
+                                {{ attribute.name }}:
+                                {{
+                                    attribute.values
+                                        .map((v) => v.name)
+                                        .join(", ")
+                                }}
+                            </p>
+                        </template>
                     </div>
                 </div>
                 <div class="product-tab-section__right">

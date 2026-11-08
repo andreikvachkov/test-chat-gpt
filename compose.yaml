@@ -1,7 +1,8 @@
 name: ${COMPOSE_PROJECT_NAME:-kamali}
 
 services:
-  app:
+  app: &php-app
+    image: ${COMPOSE_PROJECT_NAME:-kamali}-php:local
     build:
       context: .
       dockerfile: Dockerfile
@@ -28,6 +29,15 @@ services:
       retries: 10
       start_period: 10s
     init: true
+
+  scheduler:
+    <<: *php-app
+    command: ["php", "artisan", "schedule:work"]
+    healthcheck:
+      test: ["CMD-SHELL", "kill -0 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   web:
     image: nginx:stable-alpine

@@ -26,9 +26,11 @@ function add() {
         @click="add"
     >
         {{
-            variant?.stock
-                ? `Купить — ${money(variant.price_minor)}`
-                : "Нет в наличии"
+            !variant
+                ? "Выберите вариант"
+                : variant.stock
+                  ? `Купить — ${money(variant.price_minor)}`
+                  : "Нет в наличии"
         }}
     </button>
 </template>

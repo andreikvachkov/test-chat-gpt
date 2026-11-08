@@ -22,14 +22,14 @@ class Checkout
             if (! $quantities) {
                 throw ValidationException::withMessages(['cart' => 'Корзина пуста.']);
             }
-            $variants = ProductVariant::with('product')->whereIn('id', array_keys($quantities))->orderBy('id')->lockForUpdate()->get();
+            $variants = ProductVariant::with(['product' => fn ($q) => $q->withTrashed()])->whereIn('id', array_keys($quantities))->orderBy('id')->lockForUpdate()->get();
             if ($variants->count() !== count($quantities)) {
                 throw ValidationException::withMessages(['cart' => 'Состав корзины изменился.']);
             }
             $subtotal = 0;
             foreach ($variants as $v) {
                 $q = $quantities[$v->id];
-                if (! is_int($q) || $q < 1 || $q > 99 || ! $v->active || ! $v->product->published || $v->stock < $q) {
+                if (! is_int($q) || $q < 1 || $q > 99 || ! $v->active || $v->retired_at || ! $v->product?->isVisible() || $v->stock < $q) {
                     throw ValidationException::withMessages(['cart' => 'Недостаточно товара: '.$v->product->name]);
                 }$subtotal += $v->price_minor * $q;
             }

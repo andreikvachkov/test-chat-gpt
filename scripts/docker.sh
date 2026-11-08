@@ -32,16 +32,16 @@ case "$command" in
     compose run --rm --no-deps node npm ci
     compose run --rm --no-deps app php docker/prepare.php
     compose run --rm --no-deps node npm run build
-    compose up -d --wait app web
+    compose up -d --wait app web scheduler
     compose exec -T app php docker/check-ready.php
     ;;
   up)
     compose stop vite
     compose run --rm --no-deps app php -r 'if (is_file("public/hot")) unlink("public/hot");'
-    compose up -d --wait db app web
+    compose up -d --wait db app web scheduler
     compose exec -T app php docker/check-ready.php
     ;;
-  dev) compose --profile dev up -d --wait db app web vite ;;
+  dev) compose --profile dev up -d --wait db app web scheduler vite ;;
   down) compose --profile dev down ;;
   status) compose --profile dev ps ;;
   logs) compose logs --tail=100 "$@" ;;

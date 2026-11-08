@@ -7,8 +7,25 @@ import { money, setQuantity, cartOpen, favourite } from "../composables/shop";
 const props = defineProps({ product: Object });
 const { text } = useContent();
 const page = usePage();
-const variant = computed(() => props.product.variants[0]);
+const variant = computed(
+    () =>
+        [...props.product.variants].sort(
+            (a, b) => a.price_minor - b.price_minor,
+        )[0],
+);
+const collection = computed(() => props.product.collections?.[0]);
+const purchaseLabel = computed(() =>
+    props.product.type === "variable"
+        ? "Выбрать варианты"
+        : variant.value?.stock
+          ? `Купить ${props.product.name} - ${money(variant.value.price_minor)}`
+          : "Нет в наличии",
+);
 function buy() {
+    if (props.product.type === "variable") {
+        window.location.assign("/products/" + props.product.slug);
+        return;
+    }
     if (!variant.value?.stock) return;
     const q =
         page.props.cart.items.find((i) => i.id === variant.value.id)
@@ -29,18 +46,14 @@ function buy() {
             </a>
             <button
                 class="catalog-page__item__btn"
-                :disabled="!variant?.stock"
+                :disabled="product.type !== 'variable' && !variant?.stock"
                 @click="buy"
             >
-                {{
-                    variant?.stock
-                        ? `Купить ${product.name} - ${money(variant.price_minor)}`
-                        : "Нет в наличии"
-                }}
+                {{ purchaseLabel }}
             </button>
         </div>
-        <p class="catalog-page__item__badge" v-if="product.badge">
-            {{ product.badge }}
+        <p class="catalog-page__item__badge" v-if="collection">
+            {{ collection.name }}
         </p>
         <button
             :aria-pressed="page.props.favourites.includes(product.id)"
@@ -66,7 +79,7 @@ function buy() {
                     {{ product.name }}
                 </a>
                 <div class="catalog-page__item__text">
-                    {{ product.description }}
+                    {{ product.short_description }}
                 </div>
             </div>
             <p class="catalog-page__item__price">
@@ -75,14 +88,10 @@ function buy() {
         </div>
         <button
             class="catalog-page__item__btn_mobile"
-            :disabled="!variant?.stock"
+            :disabled="product.type !== 'variable' && !variant?.stock"
             @click="buy"
         >
-            {{
-                variant?.stock
-                    ? `Купить ${product.name} - ${money(variant.price_minor)}`
-                    : "Нет в наличии"
-            }}
+            {{ purchaseLabel }}
         </button>
     </div>
 </template>

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AttributeValue;
 use App\Models\Category;
 use App\Models\ContentEntry;
 use App\Models\Page;
@@ -35,16 +36,17 @@ class ShopController extends Controller
 
     public function catalog(Request $r)
     {
-        $d = $r->validate(['category' => 'nullable|string|max:100', 'q' => 'nullable|string|max:100', 'sort' => ['nullable', Rule::in(['popular', 'price_asc', 'price_desc', 'stock'])]]);
-        $query = Product::with(['variants' => fn ($q) => $q->where('active', true)])->where('published', true)
-            ->when($d['category'] ?? null, fn ($q, $v) => $q->whereHas('category', fn ($c) => $c->where('slug', $v)))
-            ->when($d['q'] ?? null, fn ($q, $v) => $q->where(fn ($n) => $n->whereLike('name', '%'.$v.'%')->orWhereLike('description', '%'.$v.'%')));
+        $d = $r->validate(['category' => 'nullable|string|max:100', 'collection' => 'nullable|string|max:100', 'q' => 'nullable|string|max:100', 'sort' => ['nullable', Rule::in(['popular', 'price_asc', 'price_desc', 'stock'])]]);
+        $query = Product::with(['collections', 'variants' => fn ($q) => $q->where('active', true)])->visible()
+            ->when($d['category'] ?? null, fn ($q, $v) => $q->whereHas('categories', fn ($c) => $c->where('slug', $v)))
+            ->when($d['collection'] ?? null, fn ($q, $v) => $q->whereHas('collections', fn ($c) => $c->where('slug', $v)))
+            ->when($d['q'] ?? null, fn ($q, $v) => $q->where(fn ($n) => $n->whereLike('name', '%'.$v.'%')->orWhereLike('short_description', '%'.$v.'%')->orWhereLike('description', '%'.$v.'%')->orWhereLike('article', '%'.$v.'%')));
         if (($d['sort'] ?? '') === 'stock') {
             $query->whereHas('variants', fn ($q) => $q->where('active', true)->where('stock', '>', 0));
         }
         $sort = $d['sort'] ?? 'popular';
         if (in_array($sort, ['price_asc', 'price_desc'])) {
-            $query->orderBy(ProductVariant::selectRaw('MIN(price_minor)')->whereColumn('product_id', 'products.id')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
+            $query->orderBy(ProductVariant::selectRaw('MIN(price_minor)')->whereColumn('product_id', 'products.id')->whereNull('retired_at')->where('active', true), $sort === 'price_desc' ? 'desc' : 'asc');
         } else {
             $query->orderBy('id');
         }
@@ -54,9 +56,12 @@ class ShopController extends Controller
 
     public function product(string $slug)
     {
-        $product = Product::with(['variants' => fn ($q) => $q->where('active', true)])->where('slug', $slug)->where('published', true)->firstOrFail();
+        $product = Product::with(['collections', 'variants' => fn ($q) => $q->where('active', true)])->where('slug', $slug)->visible()->firstOrFail();
+        $values = AttributeValue::with('attribute')->whereIn('id', collect($product->attribute_config ?? [])->pluck('value_ids')->flatten())->get()->keyBy('id');
+        $attributes = collect($product->attribute_config ?? [])->map(fn ($row) => ['id' => $row['attribute_id'], 'name' => $values->first(fn ($v) => $v->product_attribute_id === (int) $row['attribute_id'])?->attribute->name, 'visible' => $row['visible'] ?? true, 'for_variations' => $row['for_variations'] ?? false,
+            'values' => collect($row['value_ids'])->map(fn ($id) => $values->get($id))->filter()->map(fn ($v) => ['id' => $v->id, 'name' => $v->name])->values()]);
 
-        return $this->render('product-page', ['product' => $product, 'meta' => ['title' => $product->name, 'description' => Str::limit($product->description ?? '', 160)]]);
+        return $this->render('product-page', ['product' => $product, 'attributes' => $attributes->values(), 'meta' => ['title' => $product->name, 'description' => Str::limit($product->short_description ?? strip_tags($product->description ?? ''), 160)]]);
     }
 
     public function cart(Request $r, Cart $cart)
@@ -114,12 +119,12 @@ class ShopController extends Controller
 
     public function favourites(Request $r)
     {
-        return $this->render('catalog', ['products' => ['data' => $r->user()->favourites()->with(['variants' => fn ($q) => $q->where('active', true)])->where('published', true)->get()], 'categories' => [], 'filters' => [], 'favouritesPage' => true]);
+        return $this->render('catalog', ['products' => ['data' => $r->user()->favourites()->with(['collections', 'variants' => fn ($q) => $q->where('active', true)])->visible()->get()], 'categories' => [], 'filters' => [], 'favouritesPage' => true]);
     }
 
     public function favourite(Request $r, Product $product)
     {
-        abort_unless($product->published, 404);
+        abort_unless($product->isVisible(), 404);
         $r->user()->favourites()->toggle($product->id);
 
         return back();

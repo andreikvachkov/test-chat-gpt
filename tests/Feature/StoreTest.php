@@ -89,6 +89,20 @@ class StoreTest extends TestCase
         $this->assertAuthenticated();
     }
 
+    public function test_cart_requests_do_not_consume_registration_limit_and_login_still_has_its_own_limit(): void
+    {
+        $variant = Product::first()->variants()->first();
+        for ($i = 0; $i < 7; $i++) {
+            $this->post('/cart', ['variant_id' => $variant->id, 'quantity' => 1])->assertRedirect();
+        }
+        $this->post('/register', ['name' => 'Покупатель', 'email' => 'cart-registration@example.test', 'password' => 'Password1234', 'password_confirmation' => 'Password1234', 'consent' => true])->assertRedirect('/account');
+        $this->post('/logout');
+        for ($i = 0; $i < 6; $i++) {
+            $this->post('/login', ['email' => 'cart-registration@example.test', 'password' => 'wrong'])->assertSessionHasErrors('email');
+        }
+        $this->post('/login', ['email' => 'cart-registration@example.test', 'password' => 'wrong'])->assertStatus(429);
+    }
+
     public function test_password_reset_uses_a_single_use_token(): void
     {
         $user = User::factory()->create();
@@ -164,21 +178,21 @@ class StoreTest extends TestCase
         $admin = User::factory()->create();
         $admin->forceFill(['is_admin' => true])->save();
         $this->actingAs($admin);
-        foreach (['products', 'product-variants', 'categories', 'content-entries', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
+        foreach (['products', 'product-collections', 'product-attributes', 'categories', 'content-entries', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
             $this->get('/admin/'.$resource)->assertOk();
         }
     }
 
     public function test_normalized_import_is_idempotent_and_keeps_editorial_fields(): void
     {
-        $data = [['external_id' => '1c-product', 'name' => 'Товар 1С', 'slug' => 'from-1c', 'variants' => [['external_id' => '1c-variant', 'sku' => '1C-001', 'name' => '100 мл', 'price_minor' => 55000, 'stock' => 4]]]];
+        $data = [['sku' => '1C-001', 'type' => 'simple', 'name' => 'Товар 1С', 'slug' => 'from-1c', 'variants' => [['sku' => '1C-001', 'name' => '100 мл', 'price_minor' => 55000, 'stock' => 4]]]];
         $importer = app(CatalogImporter::class);
         $importer->import($data);
-        $p = Product::where('external_id', '1c-product')->firstOrFail();
+        $p = Product::where('sku', '1C-001')->firstOrFail();
         $p->update(['usage' => 'Инструкция', 'image' => '/assets/images/product.jpg']);
         $data[0]['variants'][0]['stock'] = 7;
         $importer->import($data);
-        $this->assertSame(1, Product::where('external_id', '1c-product')->count());
+        $this->assertSame(1, Product::where('sku', '1C-001')->count());
         $this->assertSame(1, $p->variants()->count());
         $this->assertSame(7, $p->variants()->first()->stock);
         $this->assertSame('Инструкция', $p->fresh()->usage);
@@ -188,7 +202,7 @@ class StoreTest extends TestCase
     public function test_import_collision_rolls_back_entire_batch(): void
     {
         $before = Product::count();
-        $data = [['external_id' => 'collision', 'slug' => 'new-item', 'name' => 'Ошибка', 'variants' => [['external_id' => 'collision-v', 'sku' => 'DEMO-VANILLA', 'name' => '100 мл', 'price_minor' => 1, 'stock' => 1]]]];
+        $data = [['sku' => 'COLLISION', 'type' => 'simple', 'slug' => 'new-item', 'name' => 'Ошибка', 'variants' => [['sku' => 'DEMO-VANILLA', 'name' => '100 мл', 'price_minor' => 1, 'stock' => 1]]]];
         try {
             app(CatalogImporter::class)->import($data);
             $this->fail('Expected validation error');

@@ -71,3 +71,6 @@ jobs:
           npm run test:browser
           npm run test:catalog-cart
           npm run test:purchase-appearance
+          umask 077
+          php tests/Fixtures/product-editor-browser.php > /tmp/kamali-editor-browser.json
+          npm run test:product-editor
