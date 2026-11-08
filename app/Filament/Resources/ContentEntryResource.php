@@ -15,6 +15,9 @@ class ContentEntryResource extends ShopResource
 {
     protected static ?string $model = ContentEntry::class;
 
+    // Compatibility class for installations updated by extracting a ZIP.
+    protected static bool $isDiscovered = false;
+
     public static function getNavigationLabel(): string
     {
         return 'Тексты, ссылки и изображения';
@@ -51,7 +54,7 @@ class ContentEntryResource extends ShopResource
 
     public static function getPages(): array
     {
-        return ['index' => Pages\ManageContentEntry::route('/')];
+        return [];
     }
 
     public static function canCreate(): bool

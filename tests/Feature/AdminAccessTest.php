@@ -86,9 +86,9 @@ class AdminAccessTest extends TestCase
     {
         return [
             ['sales_manager', ['orders', 'users']],
-            ['catalog_manager', ['products', 'categories', 'product-attributes', 'product-collections', 'media-assets']],
-            ['content_editor', ['pages', 'content-entries', 'media-assets']],
-            ['shop_manager', ['orders', 'users', 'products', 'categories', 'product-attributes', 'product-collections', 'media-assets', 'pages', 'content-entries']],
+            ['catalog_manager', ['products', 'categories', 'product-attributes', 'product-collections', 'product-reviews', 'media-assets']],
+            ['content_editor', ['articles', 'pages', 'media-assets']],
+            ['shop_manager', ['orders', 'users', 'products', 'categories', 'product-attributes', 'product-collections', 'media-assets', 'articles', 'pages', 'product-reviews']],
         ];
     }
 
@@ -96,7 +96,7 @@ class AdminAccessTest extends TestCase
     public function test_default_roles_enforce_direct_routes_and_only_owners_manage_staff(string $code, array $allowed): void
     {
         $this->actingAs($this->staff($code), 'admin');
-        foreach (['orders', 'users', 'products', 'categories', 'product-attributes', 'product-collections', 'media-assets', 'pages', 'content-entries', 'staff', 'roles'] as $resource) {
+        foreach (['orders', 'users', 'products', 'categories', 'product-attributes', 'product-collections', 'media-assets', 'articles', 'pages', 'product-reviews', 'staff', 'roles'] as $resource) {
             $response = $this->get('/admin/'.$resource);
             in_array($resource, $allowed) ? $response->assertOk() : $response->assertForbidden();
         }

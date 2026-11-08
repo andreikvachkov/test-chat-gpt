@@ -52,7 +52,7 @@ class ProductResource extends Resource
 
     public static function getNavigationLabel(): string
     {
-        return 'Товары';
+        return 'Все товары';
     }
 
     public static function getModelLabel(): string

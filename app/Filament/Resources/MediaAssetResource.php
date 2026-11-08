@@ -13,17 +13,17 @@ class MediaAssetResource extends ShopResource
 
     public static function getNavigationLabel(): string
     {
-        return 'Медиатека';
+        return 'Медиафайлы';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Медиатека';
+        return 'Медиафайлы';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Медиатека';
+        return 'Медиафайлы';
     }
 
     public static function fields(): array

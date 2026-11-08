@@ -12,17 +12,17 @@ class UserResource extends ShopResource
 
     public static function getNavigationLabel(): string
     {
-        return 'Покупатели';
+        return 'Клиенты';
     }
 
     public static function getModelLabel(): string
     {
-        return 'Покупатели';
+        return 'Клиенты';
     }
 
     public static function getPluralModelLabel(): string
     {
-        return 'Покупатели';
+        return 'Клиенты';
     }
 
     public static function fields(): array

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Contracts\PaymentGateway;
-use App\Filament\Resources\Pages\ManageContentEntry;
 use App\Models\AdminUser;
 use App\Models\ContentEntry;
 use App\Models\Order;
@@ -14,7 +13,6 @@ use App\Services\CatalogImporter;
 use App\Services\Checkout;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\DemoCatalogSeeder;
-use Filament\Actions\Testing\TestAction;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -23,7 +21,6 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
-use Livewire\Livewire;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -178,7 +175,7 @@ class StoreTest extends TestCase
         $this->actingAs($customer, 'web')->get('/admin/products')->assertRedirect('/admin/login');
         $admin = AdminUser::factory()->create();
         $this->actingAs($admin, 'admin');
-        foreach (['staff', 'roles', 'products', 'product-collections', 'product-attributes', 'categories', 'content-entries', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
+        foreach (['staff', 'roles', 'products', 'product-collections', 'product-attributes', 'categories', 'articles', 'product-reviews', 'pages', 'media-assets', 'orders', 'users'] as $resource) {
             $this->get('/admin/'.$resource)->assertOk();
         }
     }
@@ -246,14 +243,12 @@ class StoreTest extends TestCase
         $this->assertSame(0, $user->favourites()->count());
     }
 
-    public function test_admin_can_edit_a_content_block_through_filament(): void
+    public function test_removed_content_section_has_no_admin_route_and_keeps_storefront_data(): void
     {
-        $admin = AdminUser::factory()->create();
-        $this->actingAs($admin, 'admin');
-        $entry = ContentEntry::where('type', 'text')->first();
-        Livewire::test(ManageContentEntry::class)
-            ->callAction(TestAction::make('edit')->table($entry), data: ['value' => 'Текст из админки'])->assertHasNoActionErrors();
-        $this->assertSame('Текст из админки', $entry->fresh()->value);
+        $this->actingAs(AdminUser::factory()->create(), 'admin');
+        $entry = ContentEntry::where('group', 'index')->where('type', 'text')->first();
+        $this->get('/admin/content-entries')->assertNotFound();
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('content', fn ($content) => $content[$entry->key] === $entry->value));
     }
 
     public function test_a_new_cms_page_uses_its_own_metadata_and_content(): void

@@ -25,9 +25,13 @@ const viewerContext = await browser.newContext({
     viewport: { width: 1440, height: 1000 },
 });
 for (const context of [ownerContext, viewerContext])
-    await context.addInitScript(() =>
-        localStorage.setItem("kamali.cookies", "declined"),
-    );
+    await context.addInitScript(() => {
+        localStorage.setItem("kamali.cookies", "declined");
+        localStorage.setItem(
+            "filament:sidebar:collapsed_groups",
+            JSON.stringify(["Каталог", "Администрирование"]),
+        );
+    });
 const owner = await ownerContext.newPage(),
     viewer = await viewerContext.newPage();
 const errors = [];
@@ -50,6 +54,55 @@ async function permission(page, section, action, value = true) {
 }
 try {
     await login(owner, fixture.owner_email, fixture.owner_password);
+    const navigation = owner.locator(".fi-sidebar-nav");
+    const labels = await navigation
+        .locator("a[href] .fi-sidebar-item-label")
+        .allTextContents();
+    expect(labels.map((label) => label.trim())).toEqual([
+        "Инфопанель",
+        "Статьи",
+        "Медиафайлы",
+        "Страницы",
+        "Все товары",
+        "Категории",
+        "Подборки",
+        "Атрибуты",
+        "Отзывы",
+        "Заказы",
+        "Клиенты",
+        "Сотрудники",
+        "Роли и права",
+    ]);
+    const products = navigation
+        .getByText("Товары", { exact: true })
+        .locator("xpath=ancestor::li[1]");
+    for (const label of [
+        "Все товары",
+        "Категории",
+        "Подборки",
+        "Атрибуты",
+        "Отзывы",
+    ])
+        await expect(
+            products.getByRole("link", { name: label, exact: true }),
+        ).toBeVisible();
+    const parentPosition = await navigation
+        .getByText("Товары", { exact: true })
+        .boundingBox();
+    const childPosition = await products
+        .getByText("Все товары", { exact: true })
+        .boundingBox();
+    expect(childPosition.x - parentPosition.x).toBeGreaterThanOrEqual(16);
+    await expect(
+        navigation.locator(".fi-sidebar-group-collapse-btn"),
+    ).toHaveCount(0);
+    await owner.screenshot({
+        path: "/tmp/kamali-admin-access/navigation.png",
+        fullPage: true,
+    });
+    console.log(
+        "PASS: fixed navigation preserves the requested order and product nesting despite previous collapsed state",
+    );
     await owner.goto(base + "/admin/roles/create");
     const roleName = "Просмотр заказов " + fixture.suffix;
     await field(owner, "name").fill(roleName);

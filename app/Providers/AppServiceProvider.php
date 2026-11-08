@@ -30,6 +30,7 @@ class AppServiceProvider extends ServiceProvider
     {
         foreach ([
             Models\Product::class => Policies\ProductPolicy::class,
+            Models\ProductReview::class => Policies\ProductReviewPolicy::class,
             Models\Category::class => Policies\CategoryPolicy::class,
             Models\ProductAttribute::class => Policies\ProductAttributePolicy::class,
             Models\ProductCollection::class => Policies\ProductCollectionPolicy::class,

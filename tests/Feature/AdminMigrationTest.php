@@ -9,6 +9,7 @@ use App\Services\Checkout;
 use Database\Seeders\DemoCatalogSeeder;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Tests\TestCase;
 
@@ -18,7 +19,9 @@ class AdminMigrationTest extends TestCase
 
     public function test_old_admin_credentials_are_moved_and_customer_order_links_are_preserved(): void
     {
-        $this->artisan('migrate:rollback', ['--step' => 1, '--force' => true])->assertSuccessful();
+        while (Schema::hasTable('admin_users')) {
+            $this->artisan('migrate:rollback', ['--step' => 1, '--force' => true])->assertSuccessful();
+        }
         $plain = User::factory()->create(['is_admin' => true, 'password' => 'LegacyPassword123']);
         $buyerAdmin = User::factory()->create(['is_admin' => true, 'password' => 'LegacyBuyerPass123']);
         $profileAdmin = User::factory()->create(['is_admin' => true, 'phone' => '+79999999999']);

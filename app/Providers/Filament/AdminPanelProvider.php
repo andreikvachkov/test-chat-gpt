@@ -10,10 +10,12 @@ use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
 use Filament\Navigation\NavigationBuilder;
 use Filament\Navigation\NavigationGroup;
+use Filament\Navigation\NavigationItem;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\VerifyCsrfToken;
@@ -27,6 +29,7 @@ class AdminPanelProvider extends PanelProvider
     {
         return $panel->default()->id('admin')->path('admin')->authGuard('admin')->authPasswordBroker('admins')->login(Login::class)->brandName('Kamali')->pages([Dashboard::class])->colors(['primary' => Color::Rose])->discoverResources(in: app_path('Filament/Resources'), for: 'App\\Filament\\Resources')
             ->navigation(fn (NavigationBuilder $builder) => $this->shopNavigation($builder))
+            ->renderHook(PanelsRenderHook::HEAD_END, fn () => view('filament.admin-navigation'))
             ->middleware([
                 EncryptCookies::class, AddQueuedCookiesToResponse::class, StartSession::class, AuthenticateSession::class, ShareErrorsFromSession::class, VerifyCsrfToken::class, SubstituteBindings::class, DisableBladeIconComponents::class, DispatchServingFilamentEvent::class,
             ])->authMiddleware([Authenticate::class], isPersistent: true);
@@ -34,23 +37,36 @@ class AdminPanelProvider extends PanelProvider
 
     private function shopNavigation(NavigationBuilder $builder): NavigationBuilder
     {
-        $builder->items(Dashboard::getNavigationItems());
+        $builder->items([...Dashboard::getNavigationItems(), ...$this->resourceItems([
+            Resources\ArticleResource::class, Resources\MediaAssetResource::class, Resources\PageResource::class,
+        ])]);
 
-        foreach ([
-            'Каталог' => [Resources\ProductResource::class, Resources\CategoryResource::class, Resources\ProductAttributeResource::class, Resources\ProductCollectionResource::class],
-            'Продажи' => [Resources\OrderResource::class, Resources\UserResource::class],
-            'Контент' => [Resources\PageResource::class, Resources\ContentEntryResource::class, Resources\MediaAssetResource::class],
-            'Администрирование' => [Resources\AdminUserResource::class, Resources\AdminRoleResource::class],
-        ] as $label => $resources) {
-            $items = [];
-            foreach ($resources as $resource) {
-                if ($resource::canAccess()) {
-                    array_push($items, ...$resource::getNavigationItems());
-                }
-            }
-            $builder->group(NavigationGroup::make($label)->items($items));
+        $products = $this->resourceItems([
+            Resources\ProductResource::class, Resources\CategoryResource::class, Resources\ProductCollectionResource::class,
+            Resources\ProductAttributeResource::class, Resources\ProductReviewResource::class,
+        ]);
+        $catalogue = $products ? [NavigationItem::make('Товары')->icon('heroicon-o-shopping-bag')->extraAttributes(['class' => 'kamali-products-navigation'])->childItems($products)] : [];
+        array_push($catalogue, ...$this->resourceItems([Resources\OrderResource::class, Resources\UserResource::class]));
+        if ($catalogue) {
+            $builder->group(NavigationGroup::make('Каталог')->collapsible(false)->items($catalogue));
+        }
+        $administration = $this->resourceItems([Resources\AdminUserResource::class, Resources\AdminRoleResource::class]);
+        if ($administration) {
+            $builder->group(NavigationGroup::make('Администрирование')->collapsible(false)->items($administration));
         }
 
         return $builder;
+    }
+
+    private function resourceItems(array $resources): array
+    {
+        $items = [];
+        foreach ($resources as $resource) {
+            if ($resource::canAccess()) {
+                array_push($items, ...$resource::getNavigationItems());
+            }
+        }
+
+        return $items;
     }
 }
